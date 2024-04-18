@@ -1,0 +1,54 @@
+good_input.txt:
+
+get this matrix:
+0, 4 , 0, 0 , 0 , 0 , 0, 8 , 0
+4, 0 , 8, 0 , 0 , 0 , 0, 11, 0
+0, 8 , 0, 7 , 0 , 4 , 0, 0 , 2
+0, 0 , 7, 0 , 9 , 14, 0, 0 , 0
+0, 0 , 0, 9 , 0 , 10, 0, 0 , 0
+0, 0 , 4, 14, 10, 0 , 2, 0 , 0
+0, 0 , 0, 0 , 0 , 2 , 0, 1 , 6
+8, 11, 0, 0 , 0 , 0 , 1, 0 , 7
+0, 0 , 2, 0 , 0 , 0 , 6, 7 , 0
+
+and a source vertex 0
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input0.txt:
+send an empty input
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input1.txt:
+send negative number of vertices
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input2.txt:
+send just the number of vertices
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input3.txt:
+send negative weight to an edge
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input4.txt:
+send a non-zero weight in the diagonal of the matrix
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input5.txt:
+dont send a source vertex
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input6.txt:
+send a source vertex that is not in the graph
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input7.txt:
+send to many input lines
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input8.txt:
+too many vertices, so we cant create the matrix
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bad_input9.txt:
+to many vertices. but we can create the matrix and not a row for each vertex

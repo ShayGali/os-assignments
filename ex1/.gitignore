@@ -1,0 +1,6 @@
+core*
+*.o
+*.so
+*.gcov
+*.gcda
+*.gcno
