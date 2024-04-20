@@ -18,10 +18,5 @@ run: main
 	./main < inputs/good_input.txt > /dev/null
 	gcov main.c
 
-hoi:
-	for file in ./inputs/bad_input*.txt; do \
-		echo $$file; \
-	done
-
 clean:
 	rm -f *.o main *.gcno *.gcda *.gcov
