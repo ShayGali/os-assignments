@@ -20,4 +20,4 @@ bad_prog_%: bad_prog_%.c
 
 
 clean:
-	rm -f *.o $(PROGS)
+	rm -f *.o $(PROGS) core
