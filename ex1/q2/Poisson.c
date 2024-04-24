@@ -16,11 +16,9 @@ long long factorial(int n) {
 }
 
 long double poisson(int k, double lambda) {
-    printf("%lld\n", factorial(k));
-    printf("%F\n", pow(lambda, k));
-    printf("%LF\n", expl(-lambda));
     return (pow(lambda, k) / factorial(k)) * expl(-lambda);
 }
+
 int main(int argc, char const *argv[]) {
     // check for correct number of arguments
     if (argc != 3) {
@@ -28,9 +26,18 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
     // get lambda and k from command line arguments
-    double lambda = atof(argv[1]);
-    int k = atoi(argv[2]);
-    printf("lambda = %f, k = %d\n", lambda, k);
+    double lambda;
+    int k;
+    if (sscanf(argv[1], "%lf", &lambda) != 1) {
+        printf("𝛌 need to be a number\n");
+        return 1;
+    }
+
+    if (sscanf(argv[2], "%d", &k) != 1) {
+        printf("k need to be an integer\n");
+        return 1;
+    }
+
     long double val = poisson(k, lambda);
     printf("P_X(%d) = %.10Lf\n", k, val);
     return 0;

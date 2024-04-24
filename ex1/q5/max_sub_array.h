@@ -1,0 +1,1 @@
+int max_sub_array(int arr[], int n);
