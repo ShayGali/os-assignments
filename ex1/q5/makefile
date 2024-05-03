@@ -5,7 +5,7 @@ CC = gcc -pg
 all: main1 main2 main3
 
 SEED = 5
-N = 2000
+N = 5000
 
 # we create (if not exists) all the programs and then run them with the seed and N
 # in each run we create a gmon.out file
@@ -14,19 +14,19 @@ N = 2000
 run: all
 	./main1 $(SEED) $(N)
 	echo "~ maximun subarray O(n) ~" > output.txt
-	gprof -b main1 gmon.out >> output.txt
+	gprof --flat-profile main1 | head >> output.txt
 	mv gmon.out gmon.out.main1
 
 	./main2 $(SEED) $(N)
 	echo "\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n" >> output.txt
 	echo "~ maximun subarray O(n^2) ~\n" >> output.txt
-	gprof -b main2 gmon.out >> output.txt
+	gprof --flat-profile main2 | head >> output.txt
 	mv gmon.out gmon.out.main2
 
 	./main3 $(SEED) $(N)
 	echo "\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n" >> output.txt
 	echo "~ maximun subarray O(n^3) ~\n" >> output.txt
-	gprof -b main3 gmon.out >> output.txt
+	gprof --flat-profile main3 | head >> output.txt
 	mv gmon.out gmon.out.main3
 
 

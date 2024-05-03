@@ -7,8 +7,12 @@
 #define MAX_ELEMENT 74
 #define MIN_ELEMENT -25
 
-// macro to generate a random element
-#define RANDOM_ELEMENT_GEN() (rand() % (MAX_ELEMENT - MIN_ELEMENT + 1) + MIN_ELEMENT)
+void generate_random_array(int *arr, int n) {
+    for (int i = 0; i < n; i++) {
+        arr[i] = rand() % (MAX_ELEMENT - MIN_ELEMENT + 1) + MIN_ELEMENT;
+    }
+}
+
 int main(int argc, char const *argv[]) {
     // get the seed and n from the arguments
     int seed;
@@ -33,10 +37,8 @@ int main(int argc, char const *argv[]) {
         printf("Error while allocating memory for the array\n");
         return 1;
     }
-    for (int i = 0; i < n; i++) {
-        arr[i] = RANDOM_ELEMENT_GEN();
-    }
 
+    generate_random_array(arr, n);
 
     printf("The maximum subarray sum is %d\n", max_sub_array(arr, n));
     return 0;
