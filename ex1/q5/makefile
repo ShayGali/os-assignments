@@ -53,4 +53,4 @@ max_sub_array_n.o: max_sub_array_n.c max_sub_array.h
 	$(CC) -c -Wall -o $@ $<
 	
 clean:
-	rm -f *.o main[123] gmon.out* output.txt
+	rm -f *.o main[123] gmon.out*
