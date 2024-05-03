@@ -47,7 +47,7 @@ send to many input lines
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bad_input8.txt:
-too many vertices, so we cant create the matrix
+too many vertices, so we cant create the matrix (the number of vertices is int max value)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bad_input9.txt:
