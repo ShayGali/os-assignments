@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 // calculate n! (n * (n-1) * (n-2) * ... * 1)
 int factorial(int n) {
     if (n == 0) {
