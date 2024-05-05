@@ -22,7 +22,7 @@ long double poisson(int k, double lambda) {
 int main(int argc, char const *argv[]) {
     // check for correct number of arguments
     if (argc != 3) {
-        printf("Usage: ./Poisson <lambda> <k>\n");
+        printf("Usage: ./Poisson <𝛌> <k>\n");
         return 1;
     }
     // get lambda and k from command line arguments
