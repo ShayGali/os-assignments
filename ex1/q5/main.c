@@ -41,5 +41,7 @@ int main(int argc, char const *argv[]) {
     generate_random_array(arr, n);
 
     printf("The maximum subarray sum is %d\n", max_sub_array(arr, n));
+
+    free(arr);
     return 0;
 }

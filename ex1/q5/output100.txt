@@ -19,13 +19,13 @@ Each sample counts as 0.01 seconds.
 Flat profile:
 
 Each sample counts as 0.01 seconds.
-  %   cumulative   self              self     total           
- time   seconds   seconds    calls  ms/call  ms/call  name    
-101.12      0.01     0.01        1    10.11    10.11  max_sub_array
-  0.00      0.01     0.00        1     0.00     0.00  generate_random_array
+ no time accumulated
 
- %         the percentage of the total running time of the
-time       program used by this function.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+  0.00      0.00     0.00        1     0.00     0.00  generate_random_array
+  0.00      0.00     0.00        1     0.00     0.00  max_sub_array
+
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,10 +36,10 @@ time       program used by this function.
 Flat profile:
 
 Each sample counts as 0.01 seconds.
-  %   cumulative   self              self     total           
- time   seconds   seconds    calls   s/call   s/call  name    
-101.10     33.36    33.36        1    33.36    33.36  max_sub_array
-  0.00     33.36     0.00        1     0.00     0.00  generate_random_array
+ no time accumulated
 
- %         the percentage of the total running time of the
-time       program used by this function.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+  0.00      0.00     0.00        1     0.00     0.00  generate_random_array
+  0.00      0.00     0.00        1     0.00     0.00  max_sub_array
+

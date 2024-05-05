@@ -1,0 +1,45 @@
+~ maximun subarray O(n) ~
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+ no time accumulated
+
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+  0.00      0.00     0.00        1     0.00     0.00  generate_random_array
+  0.00      0.00     0.00        1     0.00     0.00  max_sub_array
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+~ maximun subarray O(n^2) ~
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+ no time accumulated
+
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+  0.00      0.00     0.00        1     0.00     0.00  generate_random_array
+  0.00      0.00     0.00        1     0.00     0.00  max_sub_array
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+~ maximun subarray O(n^3) ~
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+101.10      0.54     0.54        1   535.82   535.82  max_sub_array
+  0.00      0.54     0.00        1     0.00     0.00  generate_random_array
+
+ %         the percentage of the total running time of the
+time       program used by this function.
