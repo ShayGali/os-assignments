@@ -13,19 +13,19 @@ N = 100
 # and then we will rename the gmon.out file to gmon.out.main1, gmon.out.main2, gmon.out.main3
 run: all
 	./main1 $(SEED) $(N) >> /dev/null
-	echo "~ maximun subarray O(n) ~" > output$(N).txt
+	echo "~ maximum subarray O(n) ~" > output$(N).txt
 	gprof --flat-profile main1 | head >> output$(N).txt
 	mv gmon.out gmon_outputs/gmon.out.main1_$(N)
 
 	./main2 $(SEED) $(N) >> /dev/null
 	echo "\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n" >> output$(N).txt
-	echo "~ maximun subarray O(n^2) ~\n" >> output$(N).txt
+	echo "~ maximum subarray O(n^2) ~\n" >> output$(N).txt
 	gprof --flat-profile main2 | head >> output$(N).txt
 	mv gmon.out gmon_outputs/gmon.out.main2_$(N)
 
 	./main3 $(SEED) $(N) >> /dev/null
 	echo "\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n" >> output$(N).txt
-	echo "~ maximun subarray O(n^3) ~\n" >> output$(N).txt
+	echo "~ maximum subarray O(n^3) ~\n" >> output$(N).txt
 	gprof --flat-profile main3 | head >> output$(N).txt
 	mv gmon.out gmon_outputs/gmon.out.main3_$(N)
 
