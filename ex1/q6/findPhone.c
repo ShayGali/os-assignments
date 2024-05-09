@@ -37,11 +37,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
     char *name = argv[1];
 
     // create the pipeline
-    int pipefd[2]; // pipefd[0] is the read end, pipefd[1] is the write end
+    int pipefd[2];  // pipefd[0] is the read end, pipefd[1] is the write end
 
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -55,10 +54,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (pid1 == 0) { // if we are in the child
+    if (pid1 == 0) {  // if we are in the child
         // child 1
         // copy the write end of the pipe to the stdout file descriptor (so everything written to stdout will go to the pipe)
-        dup2(pipefd[1], STDOUT_FILENO); 
+        dup2(pipefd[1], STDOUT_FILENO);
 
         // close the original pipe file descriptors (we don't need them we have them in stdout)
         close(pipefd[0]);
@@ -70,6 +69,11 @@ int main(int argc, char *argv[]) {
         // if we reach this line, it means that execlp failed
         perror("execlp");
         return 1;
+    } else {
+        // parent
+        // close the write end of the pipe in the parent
+        close(pipefd[1]);
+        waitpid(pid1, NULL, 0);
     }
 
     // create the second child for the cut command
@@ -81,6 +85,7 @@ int main(int argc, char *argv[]) {
 
     if (pid2 == 0) {
         // child 2
+
         // redirect stdin to the pipe
         dup2(pipefd[0], STDIN_FILENO);
         // close the original pipe file descriptors
@@ -93,6 +98,9 @@ int main(int argc, char *argv[]) {
         // if we reach this line, it means that execlp failed
         perror("execlp");
         return 1;
+    } else {
+        // parent
+        waitpid(pid2, NULL, 0);
     }
 
     // create the third child for the sed command
@@ -116,17 +124,13 @@ int main(int argc, char *argv[]) {
         // if we reach this line, it means that execlp failed
         perror("execlp");
         return 1;
+    }else{
+        // parent
+        waitpid(pid3, NULL, 0);
     }
-
 
     // close the pipe in the parent
     close(pipefd[0]);
     close(pipefd[1]);
-
-    // wait for the children to finish
-    waitpid(pid1, NULL, 0);
-    waitpid(pid2, NULL, 0);
-    waitpid(pid3, NULL, 0);
-
     return 0;
 }
