@@ -33,7 +33,9 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
 
-    if (sscanf(argv[2], "%d", &k) != 1) {
+    // check if k is an integer
+    float temp;
+    if (sscanf(argv[2], "%d", &k) != 1 || sscanf(argv[2], "%f", &temp) != 1 || temp != k) {
         printf("k need to be an integer\n");
         return 1;
     }
