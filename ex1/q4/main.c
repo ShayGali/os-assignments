@@ -85,11 +85,12 @@ void dijkstra(int **graph, int src, int V) {
 
 // driver's code
 int main() {
+    float temp;
     // get the number of vertices
     int V;
     if (scanf("%d", &V) != 1) {
         printf("Error while reading the number of vertices\n");
-        printf("Hint: make sure the input is an integer\n");
+        printf("%d\n", V);
         return 1;
     }
     if (V <= 0) {
@@ -121,10 +122,7 @@ int main() {
     for (int i = 0; i < V; i++) {
         for (int j = 0; j < V; j++) {
             if (scanf("%d", &input) != 1) {
-                printf("Error while reading the weight of the edge between %d and %d\n",
-                       i, j);
-                printf("Hint: make sure the input is an integer\n");
-                printf("Hint: make sure that you pass the correct number of edges\n");
+                printf("Error while reading the weight of the edge between %d and %d\n", i, j);
                 free_graph(graph, V);
                 return 1;
             }
@@ -144,27 +142,24 @@ int main() {
         }
     }
 
-    // TODO: check if need to print the input message
     int src;
     if (scanf("%d", &src) != 1) {
         printf("Error while reading source vertex\n");
-        printf("Hint: make sure the input is an integer\n");
-        printf("Hint: make sure that you pass the source vertex\n");
         free_graph(graph, V);
         return 1;
     }
 
     if (src < 0 || src >= V) {
-        printf(
-            "Error: source vertex should be a non-negative integer and less than "
-            "the "
-            "number of vertices\n");
+        printf("Error: source vertex should be a non-negative integer and less than the number of vertices\n");
         free_graph(graph, V);
         return 1;
     }
 
     // check if there is more input
-    if (scanf("%d", &input) == 1) {
+    // work only if the input is from a file
+    // if the input is from the terminal, the program will wait for more input and will not terminate.
+    char wait;
+    if (scanf("%c", &wait) == 1) {
         printf("Error: too many inputs\n");
         free_graph(graph, V);
         return 1;

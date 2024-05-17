@@ -24,14 +24,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // create a pipe
-    int pipefd[2]; // pipefd[0] is the read end, pipefd[1] is the write end
-
-    if (pipe(pipefd) == -1) {
-        perror("pipe");
-        return 1;
-    }
-
     // insert the command arguments into the phonebook.txt
     for (int i = 1; i < argc; i++) {
         int pid = fork();
@@ -51,7 +43,7 @@ int main(int argc, char* argv[]) {
             close(fd);
 
             if (i == argc - 1)  // if it is the last argument, don't print the space
-                execlp("echo", "echo", "-n", argv[i], NULL);
+                execlp("echo", "echo", argv[i], NULL);
             else
                 execlp("echo", "echo", "-n", argv[i], "", NULL);
             perror("execlp");
@@ -60,34 +52,6 @@ int main(int argc, char* argv[]) {
             waitpid(pid, NULL, 0);
         }
     }
-
-    // insert line feed character
-    int pid = fork();
-    if (pid == -1) {
-        perror("fork");
-        return 1;
-    }
-
-    if (pid == 0) {
-        int fd = open("phonebook.txt", O_WRONLY | O_APPEND, 0666);  // open the file in write only mode and append mode, 0666 is the permission
-        if (fd == -1) {
-            perror("open");
-            return 1;
-        }
-
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-
-        execlp("echo", "echo", "", NULL);
-
-        perror("execlp");
-        return 1;
-    }
-
-    close(pipefd[0]);
-    close(pipefd[1]);
-
-    waitpid(pid, NULL, 0);
 
     return 0;
 }
