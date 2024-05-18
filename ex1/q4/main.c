@@ -85,7 +85,6 @@ void dijkstra(int **graph, int src, int V) {
 
 // driver's code
 int main() {
-    float temp;
     // get the number of vertices
     int V;
     if (scanf("%d", &V) != 1) {
@@ -137,8 +136,14 @@ int main() {
                 free_graph(graph, V);
                 return 1;
             }
-
             graph[i][j] = input;
+        }
+        // check if there is more input that its not \n
+        char t2;
+        if (scanf("%c", &t2) == 1 && t2 != '\n') {
+            printf("Error: too many inputs in the row %d\n", i);
+            free_graph(graph, V);
+            return 1;
         }
     }
 
@@ -151,16 +156,6 @@ int main() {
 
     if (src < 0 || src >= V) {
         printf("Error: source vertex should be a non-negative integer and less than the number of vertices\n");
-        free_graph(graph, V);
-        return 1;
-    }
-
-    // check if there is more input
-    // work only if the input is from a file
-    // if the input is from the terminal, the program will wait for more input and will not terminate.
-    char wait;
-    if (scanf("%c", &wait) == 1) {
-        printf("Error: too many inputs\n");
         free_graph(graph, V);
         return 1;
     }
