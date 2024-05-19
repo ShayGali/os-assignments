@@ -6,6 +6,7 @@
 
 /**
  * check if we get a permutation of 1-9
+ * @param input the input string
  */
 void is_valid_input(const char *input) {
     int counter[9] = {0};
@@ -79,7 +80,7 @@ void print_board(char board[3][3]) {
  * @param board the board
  * @param input a pointer to the input string (will be incremented until a valid move is found)
  * @return 1 if the move is a winning move, 0 otherwise
-*/
+ */
 int make_computer_move(char board[3][3], const char **input) {
     int x, y, computer_move;
     while (1) {
@@ -100,7 +101,7 @@ int make_computer_move(char board[3][3], const char **input) {
  * make a move for the user
  * @param board the board
  * @return 1 if the move is a winning move, 0 otherwise
-*/
+ */
 int make_user_move(char board[3][3]) {
     int x, y, user_input;
     while (1) {
@@ -165,7 +166,7 @@ int main(int argc, char const *argv[]) {
         print_board(board);
         printf("\n");
     }
-    
+
     // if we reached here, it's a draw
     printf("\n\n\033[0;33mDRAW!\033[0m\n\n");
     print_board(board);
