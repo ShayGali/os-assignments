@@ -1,14 +1,17 @@
 CC=gcc
-CFALGS=-Wall -g
+CFLAGS=-Wall -g
 
 .PHONY: all clean	
 
-PROG = mync
+PROGS=mync ttt
 
-all: $(PROG)
+all: $(PROGS)
 
-$(PROG): $(PROG).c
-	$(CC) $(CFALGS) -o $@ $^
+mync: mync.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+ttt: ttt.c
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f $(PROG) *.o
+	rm -f $(PROGS) *.o
