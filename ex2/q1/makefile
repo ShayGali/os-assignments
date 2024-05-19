@@ -2,10 +2,12 @@ CC=gcc
 
 .PHONY: all clean	
 
-all: ttt
+PROG = ttt
 
-ttt: ttt.c
-	$(CC) -Wall -o ttt ttt.c
+all: $(PROG)
+
+$(PROG): $(PROG).c
+	$(CC) -Wall -o $@ $^
 
 clean:
-	rm -f ttt *.o
+	rm -f $(PROG) *.o
