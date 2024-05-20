@@ -36,9 +36,10 @@ void run_program(char *args_as_string) {
     if (fd == 0) {  // child process
         execvp(args[0], args);
         fprintf(stderr, "Exec failed\n");
+        free(args);
         exit(1);
     } else {
-        wait(NULL); // wait for the child process to finish
+        wait(NULL);  // wait for the child process to finish
         // free the memory
         free(args);
     }

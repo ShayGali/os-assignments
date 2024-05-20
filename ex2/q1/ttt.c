@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 #define EMPTY '_'
 #define COMPUTER 'X'
 #define PLAYER 'O'
@@ -8,12 +10,12 @@
  * check if we get a permutation of 1-9
  * @param input the input string
  */
-void is_valid_input(const char *input) {
+void validate_input(const char *input) {
     int counter[9] = {0};
     while (*input) {
         if (*input < '1' || *input > '9') {
             printf("Invalid input - input should be between 1 and 9\n");
-            printf("got: %c\n", *input);
+            printf("got: %c, ascii: %d\n", *input, *input);
             exit(1);
         }
 
@@ -106,25 +108,26 @@ int make_user_move(char board[3][3]) {
     int x, y, user_input;
     while (1) {
         printf("Enter your move: (1-9)\n");
+        fflush(stdout);
         if (scanf("%d", &user_input) != 1) {
-            printf("Invalid input\n");
+            printf("Unexpected behavior - GOODBYE\n");
             // clear the buffer
-            while (getchar() != '\n');
-            continue;
-        }
-        if (user_input < 1 || user_input > 9) {
+            exit(EXIT_FAILURE);
+        } else if (user_input < 1 || user_input > 9) {
             printf("Invalid input - input should be between 1 and 9\n");
-            continue;
+        } else {
+            x = (user_input - 1) / 3;
+            y = (user_input - 1) % 3;
+            if (board[x][y] == EMPTY) {
+                board[x][y] = PLAYER;
+                printf("You played: (%d, %d)\n", x, y);
+                break;
+            } else {
+                printf("Cell already taken\n");
+            }
         }
-        x = (user_input - 1) / 3;
-        y = (user_input - 1) % 3;
-        if (board[x][y] == EMPTY) {
-            board[x][y] = PLAYER;
-            break;
-        }
-        printf("Cell already taken\n");
     }
-    printf("You played: (%d, %d)\n", x, y);
+
     return check_if_win(board, x, y);
 }
 
@@ -134,7 +137,8 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
 
-    is_valid_input(argv[1]);
+    validate_input(argv[1]);
+
     const char *input = argv[1];
     // fill the board with empty cells
     char board[3][3];
@@ -144,32 +148,34 @@ int main(int argc, char const *argv[]) {
         }
     }
 
+    int is_won;
     for (int round = 0; round < 9; round++) {
         if (round % 2 == 0) {
-            int is_won = make_computer_move(board, &input);
+            sleep(0.5);  // sleep for half a second so it's will be fun
+            is_won = make_computer_move(board, &input);
             if (is_won) {
-                printf("\n\n\033[0;31mComputer win!\033[0m\n\n");
-                print_board(board);
-                printf("\n");
-                return 0;
+                printf("\n\n\033[0;31mComputer won!\033[0m\n\n");
             }
         } else {
-            int is_won = make_user_move(board);
+            is_won = make_user_move(board);
             if (is_won) {
-                printf("\n\n\033[0;32mYou win!\033[0m\n\n");
-                print_board(board);
-                printf("\n");
-                return 0;
+                printf("\n\n\033[0;32mYou won!\033[0m\n\n");
             }
         }
 
         print_board(board);
         printf("\n");
+
+        if (is_won) {
+            fflush(stdout);
+            return 0;
+        }
     }
 
     // if we reached here, it's a draw
     printf("\n\n\033[0;33mDRAW!\033[0m\n\n");
     print_board(board);
     printf("\n");
+    fflush(stdout);
     return 0;
 }
