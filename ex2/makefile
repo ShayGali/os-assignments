@@ -2,7 +2,7 @@
 .PHONY: all clean q1 q2 q3 # q4 q5 q6
 all: q1 q2 q3 q4 q5 q6
 
-# run make in each subdirectory rcursively
+# run make in each subdirectory
 q*:
 	make -C $@ all
 	
