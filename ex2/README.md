@@ -10,3 +10,23 @@ its look like this:
 ![alt text](image.png)
 
 we create a link to the file ttt.c file from the q1 folder to the q2 folder.
+
+to run netcat TCP server:
+```bash
+nc -l -p <port>
+```
+
+to run netcat TCP client:
+```bash
+nc <ip> <port>
+```
+
+to run netcat UDP server:
+```bash
+nc -u -l -p <port>
+```
+
+to run netcat UDP client:
+```bash
+nc -u <ip> <port>
+```
