@@ -368,5 +368,13 @@ int main(int argc, char *argv[]) {
         }
     }
     // TODO: check how to close the sockets
+    // close the file descriptors
+    if (input_fd != STDIN_FILENO) {
+        close(input_fd);
+    }
+
+    if (output_fd != STDOUT_FILENO) {
+        close(output_fd);
+    }
     return 0;
 }
