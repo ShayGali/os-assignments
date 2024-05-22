@@ -264,13 +264,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // check if we got the -e option (if not, print an error message and exit the program)
-    if (e_value == NULL) {
-        fprintf(stderr, "Option -e is required\n");
-        fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
         fprintf(stderr, "Option -b cannot be used with -i or -o\n");
@@ -294,7 +287,7 @@ int main(int argc, char *argv[]) {
     if (b_value != NULL) {
         b_handler(b_value, &input_fd, &output_fd);
     }
-
+    if(e_value != NULL){
     // redirect the input and output to the new file descriptors
     if (input_fd != STDIN_FILENO) {
         if (dup2(input_fd, STDIN_FILENO) == -1) {
@@ -320,6 +313,9 @@ int main(int argc, char *argv[]) {
 
     // run the program with the given arguments
     run_program(e_value);
+    }else{
+        
+    }
     // TODO: check how to close the sockets
     return 0;
 }
