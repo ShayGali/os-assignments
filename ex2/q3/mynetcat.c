@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <getopt.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,11 +27,17 @@ void run_program(char *args_as_string) {
 
     // get the rest of the arguments
     while (token != NULL) {
-        token = strtok(NULL, " ");                                // get the next token (NULL - take the next token from the previous string)
-        args = (char **)realloc(args, (n + 1) * sizeof(char *));  // allocate memory for the new argument
-        args[n++] = token;                                        // add the new argument and increment the number of arguments
+        token = strtok(NULL, " ");                                    // get the next token (NULL - take the next token from the previous string)
+        char **t = (char **)realloc(args, (n + 1) * sizeof(char *));  // allocate memory for the new argument
+        // check if the memory allocation failed
+        if (t == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            free(args);
+            exit(1);
+        }
+        args = t;
+        args[n++] = token;  // add the new argument and increment the number of arguments
     }
-
     // fork and execute the program
     int fd = fork();
     if (fd < 0) {  // fork failed
@@ -111,10 +118,10 @@ void i_handler(char *i_value, int *input_fd) {
 void o_handler(char *o_value, int input_fd, int *output_fd) {
     o_value += 4;  // skip the "TCPC" prefix
 
-    // split the string to get the server IP and port
+    // split the string to get the server IP/hostname and port
     char *server_ip = strtok(o_value, ",");
     if (server_ip == NULL) {
-        fprintf(stderr, "Invalid server IP\n");
+        fprintf(stderr, "Invalid server IP/hostname\n");
         exit(EXIT_FAILURE);
     }
 
@@ -124,36 +131,50 @@ void o_handler(char *o_value, int input_fd, int *output_fd) {
         fprintf(stderr, "Invalid server port\n");
         exit(EXIT_FAILURE);
     }
-    int port = atoi(server_port);
 
-    // open a TCP client to the server
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("error creating socket");
+    // get address info
+    struct addrinfo hints, *res, *p;
+    int status;
+    int sockfd;
+
+    // set up the hints structure
+    memset(&hints, 0, sizeof hints);
+    hints.ai_socktype = SOCK_STREAM;
+
+    // get address info
+    if ((status = getaddrinfo(server_ip, server_port, &hints, &res)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
         exit(EXIT_FAILURE);
     }
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    // loop through the results and connect to the first we can
+    for (p = res; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("error creating socket");
+            continue;
+        }
 
-    if (inet_pton(AF_INET, server_ip, &addr.sin_addr) <= 0) {  // TODO: support localhost as address
-        perror("Invalid address/ Address not supported");
-        exit(EXIT_FAILURE);
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("error connecting to server");
+            continue;
+        }
+
+        break;  // if we get here, we must have connected successfully
     }
 
-    // try to connect to the server and change the output_fd to the new socket
-    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        perror("error connecting to server");
+    if (p == NULL) {
+        fprintf(stderr, "failed to connect\n");
         if (input_fd != STDIN_FILENO) {
             close(input_fd);
         }
         exit(EXIT_FAILURE);
     }
 
+    freeaddrinfo(res);  // free the linked list
+
     *output_fd = sockfd;
 }
-
 /**
  * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
  * @param b_value the port to listen to (in format "TCPS<port>")
@@ -243,7 +264,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    //check if we got the -e option (if not, print an error message and exit the program)
+    // check if we got the -e option (if not, print an error message and exit the program)
     if (e_value == NULL) {
         fprintf(stderr, "Option -e is required\n");
         fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);

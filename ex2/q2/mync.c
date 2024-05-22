@@ -21,9 +21,16 @@ void run_program(char *args_as_string) {
 
     // get the rest of the arguments
     while (token != NULL) {
-        token = strtok(NULL, " ");                                // get the next token (NULL - take the next token from the previous string)
-        args = (char **)realloc(args, (n + 1) * sizeof(char *));  // allocate memory for the new argument
-        args[n++] = token;                                        // add the new argument and increment the number of arguments
+        token = strtok(NULL, " ");                                    // get the next token (NULL - take the next token from the previous string)
+        char **t = (char **)realloc(args, (n + 1) * sizeof(char *));  // allocate memory for the new argument
+        // check if the memory allocation failed
+        if (t == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            free(args);
+            exit(1);
+        }
+        args = t;
+        args[n++] = token;  // add the new argument and increment the number of arguments
     }
 
     // fork and execute the program

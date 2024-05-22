@@ -4,3 +4,4 @@ core*
 *.gcov
 *.gcda
 *.gcno
+ex1_inst
