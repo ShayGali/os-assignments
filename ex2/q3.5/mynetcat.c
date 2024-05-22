@@ -287,34 +287,85 @@ int main(int argc, char *argv[]) {
     if (b_value != NULL) {
         b_handler(b_value, &input_fd, &output_fd);
     }
-    if(e_value != NULL){
-    // redirect the input and output to the new file descriptors
-    if (input_fd != STDIN_FILENO) {
-        if (dup2(input_fd, STDIN_FILENO) == -1) {
-            close(input_fd);
-            if (output_fd != STDOUT_FILENO) {
-                close(output_fd);
-            }
-            perror("dup2 input");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    if (output_fd != STDOUT_FILENO) {
-        if (dup2(output_fd, STDOUT_FILENO) == -1) {
-            close(output_fd);
-            if (input_fd != STDIN_FILENO) {
+    if (e_value != NULL) {
+        // redirect the input and output to the new file descriptors
+        if (input_fd != STDIN_FILENO) {
+            if (dup2(input_fd, STDIN_FILENO) == -1) {
                 close(input_fd);
+                if (output_fd != STDOUT_FILENO) {
+                    close(output_fd);
+                }
+                perror("dup2 input");
+                exit(EXIT_FAILURE);
             }
-            perror("dup2 output");
-            exit(EXIT_FAILURE);
         }
-    }
 
-    // run the program with the given arguments
-    run_program(e_value);
-    }else{
-        
+        if (output_fd != STDOUT_FILENO) {
+            if (dup2(output_fd, STDOUT_FILENO) == -1) {
+                close(output_fd);
+                if (input_fd != STDIN_FILENO) {
+                    close(input_fd);
+                }
+                perror("dup2 output");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // run the program with the given arguments
+        run_program(e_value);
+    } else {
+        // print to the stdout from the input_fd
+        // send to output_fd from the stdin
+        fd_set read_fds;
+        int max_fd = input_fd;
+
+        while (1) {
+            FD_ZERO(&read_fds);
+            if (input_fd != STDIN_FILENO) {
+                FD_SET(input_fd, &read_fds);
+            }
+            FD_SET(STDIN_FILENO, &read_fds);
+
+            if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) == -1) {
+                perror("select");
+                exit(EXIT_FAILURE);
+            }
+
+            // check if the input_fd has data to read (a socket or a file - not the stdin)
+            if (input_fd != STDIN_FILENO && FD_ISSET(input_fd, &read_fds)) {
+                char buffer[1024];
+                int bytes_read = read(input_fd, buffer, sizeof(buffer));  // read from the input_fd
+                if (bytes_read == -1) {
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                }
+                if (bytes_read == 0) {
+                    break;
+                }
+                // write to the stdout
+                if (write(STDOUT_FILENO, buffer, bytes_read) == -1) {
+                    perror("write");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // check if the stdin has data to read (only if we need to write to the output_fd - output_fd != STDOUT_FILENO)
+            if (FD_ISSET(STDIN_FILENO, &read_fds) && output_fd != STDOUT_FILENO) {
+                char buffer[1024];
+                int bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer));  // read from the stdin
+                if (bytes_read == -1) {
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                }
+                if (bytes_read == 0) {
+                    break;
+                }
+                if (write(output_fd, buffer, bytes_read) == -1) {
+                    perror("write");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
     }
     // TODO: check how to close the sockets
     return 0;
