@@ -13,9 +13,8 @@
  * Open a TCP server to listen to the given port and accept the connection
  * @param port the port to listen to
  * @return the file descriptor of the connected socket
-*/
+ */
 int open_tcp_server_and_accept(int port) {
-
     // create TCP socket that will listen to input on localhost:port
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
@@ -59,6 +58,56 @@ int open_tcp_server_and_accept(int port) {
     return client_fd;
 }
 
+/**
+ * Connect to a TCP server
+ * @param server_addr the server IP or hostname
+ * @param server_port the server port
+ * @param input_fd the file descriptor of the connection socket
+ */
+int connect_to_tcp_server(char *server_addr, char *server_port, int input_fd) {
+    // get address info
+    struct addrinfo hints, *res, *p;
+    int status;
+    int sockfd;
+
+    // set up the hints structure
+    memset(&hints, 0, sizeof hints);
+    hints.ai_socktype = SOCK_STREAM;
+
+    // get address info
+    if ((status = getaddrinfo(server_addr, server_port, &hints, &res)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        exit(EXIT_FAILURE);
+    }
+
+    // loop through the results and connect to the first we can
+    for (p = res; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("error creating socket");
+            continue;
+        }
+
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("error connecting to server");
+            continue;
+        }
+
+        break;  // if we get here, we must have connected successfully
+    }
+
+    if (p == NULL) {
+        fprintf(stderr, "failed to connect\n");
+        if (input_fd != STDIN_FILENO) {
+            close(input_fd);
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(res);  // free the linked list
+
+    return sockfd;
+}
 /**
  * Run the program with the given arguments
  */
@@ -114,9 +163,15 @@ void run_program(char *args_as_string) {
  * @param input_fd the file descriptor to store the new socket (return value)
  */
 void i_handler(char *i_value, int *input_fd) {
-    i_value += 4;  // skip the "TCPS" prefix
-    int port = atoi(i_value);
-   *input_fd = open_tcp_server_and_accept(port);
+    // check if the prefix is TCPS
+    if (strncmp(i_value, "TCPS", 4) == 0) {
+        i_value += 4;  // skip the "TCPS" prefix
+        int port = atoi(i_value);
+        *input_fd = open_tcp_server_and_accept(port);
+    } else {
+        fprintf(stderr, "Invalid input\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 /**
@@ -126,64 +181,28 @@ void i_handler(char *i_value, int *input_fd) {
  * @param output_fd the file descriptor to store the new socket (return value)
  */
 void o_handler(char *o_value, int input_fd, int *output_fd) {
-    o_value += 4;  // skip the "TCPC" prefix
+    // check if the prefix is TCPC
+    if (strncmp(o_value, "TCPC", 4) == 0) {
+        o_value += 4;  // skip the "TCPC" prefix
 
-    // split the string to get the server IP/hostname and port
-    char *server_ip = strtok(o_value, ",");
-    if (server_ip == NULL) {
-        fprintf(stderr, "Invalid server IP/hostname\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // get the rest of the string after the comma
-    char *server_port = strtok(NULL, ",");
-    if (server_port == NULL) {
-        fprintf(stderr, "Invalid server port\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // get address info
-    struct addrinfo hints, *res, *p;
-    int status;
-    int sockfd;
-
-    // set up the hints structure
-    memset(&hints, 0, sizeof hints);
-    hints.ai_socktype = SOCK_STREAM;
-
-    // get address info
-    if ((status = getaddrinfo(server_ip, server_port, &hints, &res)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        exit(EXIT_FAILURE);
-    }
-
-    // loop through the results and connect to the first we can
-    for (p = res; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            perror("error creating socket");
-            continue;
+        // split the string to get the server IP/hostname and port
+        char *server_ip = strtok(o_value, ",");
+        if (server_ip == NULL) {
+            fprintf(stderr, "Invalid server IP/hostname\n");
+            exit(EXIT_FAILURE);
         }
 
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("error connecting to server");
-            continue;
+        // get the rest of the string after the comma
+        char *server_port = strtok(NULL, ",");
+        if (server_port == NULL) {
+            fprintf(stderr, "Invalid server port\n");
+            exit(EXIT_FAILURE);
         }
-
-        break;  // if we get here, we must have connected successfully
-    }
-
-    if (p == NULL) {
-        fprintf(stderr, "failed to connect\n");
-        if (input_fd != STDIN_FILENO) {
-            close(input_fd);
-        }
+        *output_fd = connect_to_tcp_server(server_ip, server_port, input_fd);
+    } else {
+        fprintf(stderr, "Invalid output\n");
         exit(EXIT_FAILURE);
     }
-
-    freeaddrinfo(res);  // free the linked list
-
-    *output_fd = sockfd;
 }
 /**
  * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
@@ -347,7 +366,7 @@ int main(int argc, char *argv[]) {
     } else {
         chat_handler(input_fd, output_fd);
     }
-    
+
     // TODO: check how to close the sockets
     // close the file descriptors
     if (input_fd != STDIN_FILENO) {
