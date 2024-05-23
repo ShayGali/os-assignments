@@ -10,6 +10,56 @@
 #include <unistd.h>
 
 /**
+ * Open a TCP server to listen to the given port and accept the connection
+ * @param port the port to listen to
+ * @return the file descriptor of the connected socket
+*/
+int open_tcp_server_and_accept(int port) {
+
+    // create TCP socket that will listen to input on localhost:port
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        perror("error creating socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // allow the socket to be reused
+    int optval = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+    // bind the socket to the address
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("error binding socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // listen for incoming connections - at most 1
+    if (listen(sockfd, 1) == -1) {
+        perror("error listening on socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // accept the connection and change the input_fd to the new socket
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+    int client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len);
+
+    if (client_fd == -1) {
+        perror("error accepting connection");
+        exit(EXIT_FAILURE);
+    }
+    return client_fd;
+}
+
+/**
  * Run the program with the given arguments
  */
 void run_program(char *args_as_string) {
@@ -66,47 +116,7 @@ void run_program(char *args_as_string) {
 void i_handler(char *i_value, int *input_fd) {
     i_value += 4;  // skip the "TCPS" prefix
     int port = atoi(i_value);
-
-    // create TCP socket that will listen to input on localhost:port
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("error creating socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // allow the socket to be reused
-    int optval = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-
-    // bind the socket to the address
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        perror("error binding socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // listen for incoming connections - at most 1
-    if (listen(sockfd, 1) == -1) {
-        perror("error listening on socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // accept the connection and change the input_fd to the new socket
-    struct sockaddr_in client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    *input_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len);
-
-    if (*input_fd == -1) {
-        perror("error accepting connection");
-        exit(EXIT_FAILURE);
-    }
+   *input_fd = open_tcp_server_and_accept(port);
 }
 
 /**
@@ -186,47 +196,7 @@ void b_handler(char *b_value, int *input_fd, int *output_fd) {
     // open TCP server to listen to the port
     b_value += 4;  // skip the "TCPS" prefix
     int port = atoi(b_value);
-
-    // create TCP socket that will listen to input on localhost:port
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("error creating socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // allow the socket to be reused
-    int optval = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-
-    // bind the socket to the address
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        perror("error binding socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // listen for incoming connections - at most 1
-    if (listen(sockfd, 1) == -1) {
-        perror("error listening on socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // accept the connection and change the input_fd & output_fd to the new socket
-    struct sockaddr_in client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    int new_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len);
-    if (new_fd == -1) {
-        perror("error accepting connection");
-        exit(EXIT_FAILURE);
-    }
-
+    int new_fd = open_tcp_server_and_accept(port);
     *input_fd = new_fd;
     *output_fd = new_fd;
 }
