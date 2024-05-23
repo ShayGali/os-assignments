@@ -1,7 +1,12 @@
 ./mync -e "./ttt 123456789"
 # -b
 ./mync -e "./ttt 123456789" -b TCPS4269
+./mync -e "./ttt 123456789" -b UDPS4269
+./mync -e "./ttt 123456789" -b UDSSD/tmp/hoi
+./mync -e "./ttt 123456789" -b UDSSS/tmp/hoi
+
 ./mync -b TCPS4269
+
 
 # -i (run this and then create client)
 # tcp
@@ -37,3 +42,9 @@ nc -u -l -p 6699
 
 # UDP client:
 nc -u localhost 4269
+
+# Unix domain socket server:
+nc -U /tmp/hoi
+
+# Unix domain socket client:
+nc -U /tmp/hoi

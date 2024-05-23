@@ -222,9 +222,9 @@ int udp_client(char *server_ip, char *server_port) {
     return sockfd;
 }
 
-int uds_server(char *socket_path, int type) {
+int uds_server_stream(char *socket_path) {
     // create a socket
-    int sockfd = socket(AF_UNIX, type, 0);
+    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd == -1) {
         perror("error creating socket");
         cleanup_and_exit(EXIT_FAILURE);
@@ -258,9 +258,69 @@ int uds_server(char *socket_path, int type) {
     return client_fd;
 }
 
-int uds_client(char *socket_path, int type) {
+int uds_server_datagram(char *socket_path) {
     // create a socket
-    int sockfd = socket(AF_UNIX, type, 0);
+    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (sockfd == -1) {
+        perror("error creating socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // bind the socket to the address
+    struct sockaddr_un addr;
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, socket_path);
+
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        printf("%s\n", addr.sun_path);
+        perror("error binding socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // receive dummy data to get the client address
+    char buffer[1024];
+    struct sockaddr_un client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    int bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_addr_len);
+    if (bytes_received == -1) {
+        perror("error receiving data");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // call connect to save the client address
+    if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
+        perror("error connecting to client");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    return sockfd;
+}
+
+int uds_client_stream(char *socket_path) {
+    // create a socket
+    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        perror("error creating socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // connect to the server
+    struct sockaddr_un addr;
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, socket_path);
+
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("error connecting to server");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    return sockfd;
+}
+
+int uds_client_datagram(char *socket_path) {
+    // create a socket
+    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (sockfd == -1) {
         perror("error creating socket");
         cleanup_and_exit(EXIT_FAILURE);
@@ -362,18 +422,38 @@ void i_handler(char *i_value) {
     } else if (strncmp(i_value, "UDSS", 4) == 0) {
         // open Unix Domain Socket server on the given path
         i_value += 4;  // skip the "UDSS" prefix
-        int type;
         if (*i_value == 'D') {
-            type = SOCK_DGRAM;
+            i_value++;  // skip the type character
+            input_fd = uds_server_datagram(i_value);
         } else if (*i_value == 'S') {
-            type = SOCK_STREAM;
+            i_value++;  // skip the type character
+            input_fd = uds_server_stream(i_value);
         } else {
             fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
         }
-        i_value++;
-        input_fd = uds_server(i_value, type);
+    } else if (strncmp(i_value, "TCPC", 4) == 0) {
+        i_value += 4;  // skip the "TCPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(i_value, &server_ip, &server_port);
+        input_fd = connect_to_tcp_server(server_ip, server_port);
+    } else if (strncmp(i_value, "UDPC", 4) == 0) {
+        i_value += 4;  // skip the "UDPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(i_value, &server_ip, &server_port);
+        input_fd = udp_client(server_ip, server_port);
+    } else if (strncmp(i_value, "UDSC", 4) == 0) {
+        i_value += 4;  // skip the "UDSC" prefix
+        if (*i_value == 'D') {
+            i_value++;  // skip the type character
+            input_fd = uds_client_datagram(i_value);
+        } else if (*i_value == 'S') {
+            i_value++;  // skip the type character
+            input_fd = uds_client_stream(i_value);
+        } else {
+            fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
+        }
     } else {
-        fprintf(stderr, "Invalid input\n");
+        fprintf(stderr, "Invalid input. Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 }
@@ -384,35 +464,50 @@ void i_handler(char *i_value) {
  * will change the output_fd to the new socket
  */
 void o_handler(char *o_value) {
-    // check if the prefix is TCPC
-    if (strncmp(o_value, "TCPC", 4) == 0) {
+    // check if the prefix is TCPS
+    if (strncmp(o_value, "TCPS", 4) == 0) {
+        o_value += 4;  // skip the "TCPS" prefix
+        int port = atoi(o_value);
+        output_fd = open_tcp_server_and_accept(port);
+    } else if (strncmp(o_value, "UDPS", 4) == 0) {
+        o_value += 4;  // skip the "UDPS" prefix
+        int port = atoi(o_value);
+        output_fd = udp_server(port);
+    } else if (strncmp(o_value, "UDSS", 4) == 0) {
+        // open Unix Domain Socket server on the given path
+        o_value += 4;  // skip the "UDSS" prefix
+        if (*o_value == 'D') {
+            o_value++;  // skip the type character
+            output_fd = uds_server_datagram(o_value);
+        } else if (*o_value == 'S') {
+            o_value++;  // skip the type character
+            output_fd = uds_server_stream(o_value);
+        } else {
+            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
+        }
+    } else if (strncmp(o_value, "TCPC", 4) == 0) {
         o_value += 4;  // skip the "TCPC" prefix
-
-        // get the server IP and port
         char *server_ip, *server_port;
         parse_hostname_port(o_value, &server_ip, &server_port);
         output_fd = connect_to_tcp_server(server_ip, server_port);
     } else if (strncmp(o_value, "UDPC", 4) == 0) {
         o_value += 4;  // skip the "UDPC" prefix
-        // get the server IP and port
         char *server_ip, *server_port;
         parse_hostname_port(o_value, &server_ip, &server_port);
         output_fd = udp_client(server_ip, server_port);
     } else if (strncmp(o_value, "UDSC", 4) == 0) {
-        // connect to a Unix Domain Socket client on the given path
         o_value += 4;  // skip the "UDSC" prefix
-        int type;
         if (*o_value == 'D') {
-            type = SOCK_DGRAM;
+            o_value++;  // skip the type character
+            output_fd = uds_client_datagram(o_value);
         } else if (*o_value == 'S') {
-            type = SOCK_STREAM;
+            o_value++;  // skip the type character
+            output_fd = uds_client_stream(o_value);
         } else {
             fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
         }
-        o_value++;
-        output_fd = uds_client(o_value, type);
     } else {
-        fprintf(stderr, "Invalid output\n");
+        fprintf(stderr, "Invalid input\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 }
@@ -439,18 +534,17 @@ void b_handler(char *b_value) {
     } else if (strncmp(b_value, "UDSS", 4) == 0) {
         // open Unix Domain Socket server on the given path
         b_value += 4;  // skip the "UDSS" prefix
-        int type;
         if (*b_value == 'D') {
-            type = SOCK_DGRAM;
+            b_value++;  // skip the type character
+            int new_fd = uds_server_datagram(b_value);
+            input_fd = new_fd;
+            output_fd = new_fd;
         } else if (*b_value == 'S') {
-            type = SOCK_STREAM;
-        } else {
-            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
+            b_value++;  // skip the type character
+            int new_fd = uds_server_stream(b_value);
+            input_fd = new_fd;
+            output_fd = new_fd;
         }
-        b_value++;
-        int new_fd = uds_server(b_value, type);
-        input_fd = new_fd;
-        output_fd = new_fd;
     } else {
         fprintf(stderr, "Invalid input\n");
         cleanup_and_exit(EXIT_FAILURE);
