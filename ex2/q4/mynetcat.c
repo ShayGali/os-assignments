@@ -14,16 +14,18 @@
 int input_fd = STDIN_FILENO;
 int output_fd = STDOUT_FILENO;
 
-void close_program(int sig) {
+void cleanup_and_exit(int exit_code) {
     if (input_fd != STDIN_FILENO) {
         close(input_fd);
     }
     if (output_fd != STDOUT_FILENO) {
         close(output_fd);
     }
+    exit(exit_code);
+}
 
-    printf("Timeout reached... BYEEEE\n");
-    exit(EXIT_SUCCESS);
+void close_program(int sig) {
+    cleanup_and_exit(EXIT_SUCCESS);
 }
 
 /**
@@ -36,14 +38,14 @@ int open_tcp_server_and_accept(int port) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
         perror("error creating socket");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // allow the socket to be reused
     int optval = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
         perror("setsockopt");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // bind the socket to the address
@@ -54,13 +56,13 @@ int open_tcp_server_and_accept(int port) {
 
     if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         perror("error binding socket");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // listen for incoming connections - at most 1
     if (listen(sockfd, 1) == -1) {
         perror("error listening on socket");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // accept the connection and change the input_fd to the new socket
@@ -70,7 +72,7 @@ int open_tcp_server_and_accept(int port) {
 
     if (client_fd == -1) {
         perror("error accepting connection");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
     return client_fd;
 }
@@ -94,7 +96,7 @@ int connect_to_tcp_server(char *server_addr, char *server_port) {
     // get address info
     if ((status = getaddrinfo(server_addr, server_port, &hints, &res)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // loop through the results and connect to the first we can
@@ -115,16 +117,127 @@ int connect_to_tcp_server(char *server_addr, char *server_port) {
 
     if (p == NULL) {
         fprintf(stderr, "failed to connect\n");
-        if (input_fd != STDIN_FILENO) {
-            close(input_fd);
-        }
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     freeaddrinfo(res);  // free the linked list
 
     return sockfd;
 }
+
+/**
+ * Open a UDP server to listen to the given port
+ * Will wait to receive a dummy data to get the client address
+ * @param port the port to listen to
+ * @return the file descriptor of the connection socket
+ */
+int udp_server(int port) {
+    // create UDP socket that will listen to input on localhost:port
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == -1) {
+        perror("error creating socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // allow the socket to be reused
+    int optval = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+        perror("setsockopt");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // bind the socket to the address
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("error binding socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // receive dummy data to get the client address
+    char buffer[1024];
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    int bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_addr_len);
+    if (bytes_received == -1) {
+        perror("error receiving data");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // call connect to save the client address
+    if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
+        perror("error connecting to client");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    return sockfd;
+}
+
+/**
+ * Connect to a UDP server
+ * @param server_ip the server IP or hostname
+ * @param server_port the server port
+ * @return the file descriptor of the connection socket
+ */
+int udp_client(char *server_ip, char *server_port) {
+    // get address info
+    struct addrinfo hints, *res, *p;
+    int status;
+    int sockfd;
+
+    // set up the hints structure
+    memset(&hints, 0, sizeof hints);
+    hints.ai_socktype = SOCK_DGRAM;
+
+    // get address info
+    if ((status = getaddrinfo(server_ip, server_port, &hints, &res)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // loop through the results and connect to the first we can
+    for (p = res; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("error creating socket");
+            continue;
+        }
+        sendto(sockfd, "Hello", 5, 0, p->ai_addr, p->ai_addrlen);
+        // "connect" to the server - so if we use sendto/recvfrom, we don't need to specify the server address
+        connect(sockfd, p->ai_addr, p->ai_addrlen);
+
+        break;  // if we get here, we must have connected successfully
+    }
+
+    if (p == NULL) {
+        fprintf(stderr, "failed to connect\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(res);  // free the linked list
+
+    return sockfd;
+}
+
+void parse_hostname_port(char *value, char **hostname, char **port) {
+    // split the string to get the server IP/hostname and port
+    *hostname = strtok(value, ",");
+    if (*hostname == NULL) {
+        fprintf(stderr, "Invalid server IP/hostname\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    // get the rest of the string after the comma
+    *port = strtok(NULL, ",");
+    if (*port == NULL) {
+        fprintf(stderr, "Invalid server port\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+}
+
 /**
  * Run the program with the given arguments
  */
@@ -134,7 +247,7 @@ void run_program(char *args_as_string) {
 
     if (token == NULL) {
         fprintf(stderr, "No arguments provided\n");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
     // create an array of strings to store the arguments
     char **args = (char **)malloc(sizeof(char *));
@@ -149,7 +262,7 @@ void run_program(char *args_as_string) {
         if (t == NULL) {
             fprintf(stderr, "Memory allocation failed\n");
             free(args);
-            exit(1);
+            cleanup_and_exit(EXIT_FAILURE);
         }
         args = t;
         args[n++] = token;  // add the new argument and increment the number of arguments
@@ -158,14 +271,14 @@ void run_program(char *args_as_string) {
     int fd = fork();
     if (fd < 0) {  // fork failed
         fprintf(stderr, "Fork failed\n");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     if (fd == 0) {  // child process
         execvp(args[0], args);
         fprintf(stderr, "Exec failed\n");
         free(args);
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     } else {
         wait(NULL);  // wait for the child process to finish
         // free the memory
@@ -185,9 +298,13 @@ void i_handler(char *i_value) {
         i_value += 4;  // skip the "TCPS" prefix
         int port = atoi(i_value);
         input_fd = open_tcp_server_and_accept(port);
+    } else if (strncmp(i_value, "UDPS", 4) == 0) {
+        i_value += 4;  // skip the "UDPS" prefix
+        int port = atoi(i_value);
+        input_fd = udp_server(port);
     } else {
         fprintf(stderr, "Invalid input\n");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 }
 
@@ -201,23 +318,19 @@ void o_handler(char *o_value) {
     if (strncmp(o_value, "TCPC", 4) == 0) {
         o_value += 4;  // skip the "TCPC" prefix
 
-        // split the string to get the server IP/hostname and port
-        char *server_ip = strtok(o_value, ",");
-        if (server_ip == NULL) {
-            fprintf(stderr, "Invalid server IP/hostname\n");
-            exit(EXIT_FAILURE);
-        }
-
-        // get the rest of the string after the comma
-        char *server_port = strtok(NULL, ",");
-        if (server_port == NULL) {
-            fprintf(stderr, "Invalid server port\n");
-            exit(EXIT_FAILURE);
-        }
+        // get the server IP and port
+        char *server_ip, *server_port;
+        parse_hostname_port(o_value, &server_ip, &server_port);
         output_fd = connect_to_tcp_server(server_ip, server_port);
+    } else if (strncmp(o_value, "UDPC", 4) == 0) {
+        o_value += 4;  // skip the "UDPC" prefix
+        // get the server IP and port
+        char *server_ip, *server_port;
+        parse_hostname_port(o_value, &server_ip, &server_port);
+        output_fd = udp_client(server_ip, server_port);
     } else {
         fprintf(stderr, "Invalid output\n");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 }
 /**
@@ -226,12 +339,24 @@ void o_handler(char *o_value) {
  * @param b_value the port to listen to (in format "TCPS<port>")
  */
 void b_handler(char *b_value) {
-    // open TCP server to listen to the port
-    b_value += 4;  // skip the "TCPS" prefix
-    int port = atoi(b_value);
-    int new_fd = open_tcp_server_and_accept(port);
-    input_fd = new_fd;
-    output_fd = new_fd;
+    if (strncmp(b_value, "TCPS", 4) == 0) {
+        // open TCP server to listen to the port
+        b_value += 4;  // skip the "TCPS" prefix
+        int port = atoi(b_value);
+        int new_fd = open_tcp_server_and_accept(port);
+        input_fd = new_fd;
+        output_fd = new_fd;
+    } else if (strncmp(b_value, "UDPS", 4) == 0) {
+        // open UDP server to listen to the port
+        b_value += 4;  // skip the "UDPS" prefix
+        int port = atoi(b_value);
+        int new_fd = udp_server(port);
+        input_fd = new_fd;
+        output_fd = new_fd;
+    } else {
+        fprintf(stderr, "Invalid input\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
 }
 
 void chat_handler() {
@@ -254,7 +379,7 @@ void chat_handler() {
         // wait for any of the file descriptors to have data to read
         if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) == -1) {
             perror("select");
-            exit(EXIT_FAILURE);
+            cleanup_and_exit(EXIT_FAILURE);
         }
 
         // check if the input_fd has data to read (a socket or a file - not the stdin)
@@ -263,7 +388,7 @@ void chat_handler() {
             int bytes_read = read(input_fd, buffer, sizeof(buffer));  // read from the input_fd
             if (bytes_read == -1) {
                 perror("read");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
             if (bytes_read == 0) {
                 break;
@@ -271,7 +396,7 @@ void chat_handler() {
             // write to the stdout
             if (write(STDOUT_FILENO, buffer, bytes_read) == -1) {
                 perror("write");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
         }
 
@@ -281,14 +406,14 @@ void chat_handler() {
             int bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer));  // read from the stdin
             if (bytes_read == -1) {
                 perror("read");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
             if (bytes_read == 0) {
                 break;
             }
             if (write(output_fd, buffer, bytes_read) == -1) {
                 perror("write");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
         }
     }
@@ -298,7 +423,7 @@ int main(int argc, char *argv[]) {
     char *usage_msg = "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>] [-t <value>]\n";
     if (argc < 2) {
         fprintf(stderr, usage_msg, argv[0]);
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     // parse the arguments
@@ -328,7 +453,7 @@ int main(int argc, char *argv[]) {
                 break;
             default:
                 fprintf(stderr, usage_msg, argv[0]);
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
         }
     }
 
@@ -341,7 +466,7 @@ int main(int argc, char *argv[]) {
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
         fprintf(stderr, "Option -b cannot be used with -i or -o\n");
-        exit(EXIT_FAILURE);
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     if (i_value != NULL) {
@@ -360,23 +485,15 @@ int main(int argc, char *argv[]) {
         // redirect the input and output to the new file descriptors
         if (input_fd != STDIN_FILENO) {
             if (dup2(input_fd, STDIN_FILENO) == -1) {
-                close(input_fd);
-                if (output_fd != STDOUT_FILENO) {
-                    close(output_fd);
-                }
                 perror("dup2 input");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
         }
 
         if (output_fd != STDOUT_FILENO) {
             if (dup2(output_fd, STDOUT_FILENO) == -1) {
-                close(output_fd);
-                if (input_fd != STDIN_FILENO) {
-                    close(input_fd);
-                }
                 perror("dup2 output");
-                exit(EXIT_FAILURE);
+                cleanup_and_exit(EXIT_FAILURE);
             }
         }
 

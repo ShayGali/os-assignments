@@ -4,13 +4,21 @@
 ./mync -b TCPS4269 
 
 # -i (run this and then create client)
+# tcp
 ./mync -e "./ttt 123456789" -i TCPS4269
 ./mync -i TCPS4269
 
+# udp
+./mync -e "./ttt 123456789" -i UDPS4269
+
 # -o (open server and then run this)
+# tcp
 ./mync -e "./ttt 123456789" -o TCPClocalhost,6699
 ./mync -e "./ttt 123456789" -o TCPC127.0.0.1,6699
 ./mync -o TCPClocalhost,6699
+
+# upd
+./mync -e "./ttt 123456789" -o UDPClocalhost,6699
 
 # -i -o
 ./mync -e "./ttt 123456789" -i TCPS4269 -o TCPClocalhost,6699
