@@ -231,6 +231,66 @@ void b_handler(char *b_value, int *input_fd, int *output_fd) {
     *output_fd = new_fd;
 }
 
+void chat_handler(int input_fd, int output_fd) {
+    // print to the stdout from the input_fd
+    // send to output_fd from the stdin
+    fd_set read_fds;
+    int max_fd = input_fd;
+
+    while (1) {
+        FD_ZERO(&read_fds);
+
+        // check if we need to listen to the input_fd (only if it is not the stdin)
+        if (input_fd != STDIN_FILENO) {
+            FD_SET(input_fd, &read_fds);
+        }
+
+        // listen to the stdin
+        FD_SET(STDIN_FILENO, &read_fds);
+
+        // wait for any of the file descriptors to have data to read
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) == -1) {
+            perror("select");
+            exit(EXIT_FAILURE);
+        }
+
+        // check if the input_fd has data to read (a socket or a file - not the stdin)
+        if (input_fd != STDIN_FILENO && FD_ISSET(input_fd, &read_fds)) {
+            char buffer[1024];
+            int bytes_read = read(input_fd, buffer, sizeof(buffer));  // read from the input_fd
+            if (bytes_read == -1) {
+                perror("read");
+                exit(EXIT_FAILURE);
+            }
+            if (bytes_read == 0) {
+                break;
+            }
+            // write to the stdout
+            if (write(STDOUT_FILENO, buffer, bytes_read) == -1) {
+                perror("write");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // check if the stdin has data to read (only if we need to write to the output_fd - output_fd != STDOUT_FILENO)
+        if (FD_ISSET(STDIN_FILENO, &read_fds) && output_fd != STDOUT_FILENO) {
+            char buffer[1024];
+            int bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer));  // read from the stdin
+            if (bytes_read == -1) {
+                perror("read");
+                exit(EXIT_FAILURE);
+            }
+            if (bytes_read == 0) {
+                break;
+            }
+            if (write(output_fd, buffer, bytes_read) == -1) {
+                perror("write");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);
@@ -287,6 +347,7 @@ int main(int argc, char *argv[]) {
     if (b_value != NULL) {
         b_handler(b_value, &input_fd, &output_fd);
     }
+
     if (e_value != NULL) {
         // redirect the input and output to the new file descriptors
         if (input_fd != STDIN_FILENO) {
@@ -314,59 +375,9 @@ int main(int argc, char *argv[]) {
         // run the program with the given arguments
         run_program(e_value);
     } else {
-        // print to the stdout from the input_fd
-        // send to output_fd from the stdin
-        fd_set read_fds;
-        int max_fd = input_fd;
-
-        while (1) {
-            FD_ZERO(&read_fds);
-            if (input_fd != STDIN_FILENO) {
-                FD_SET(input_fd, &read_fds);
-            }
-            FD_SET(STDIN_FILENO, &read_fds);
-
-            if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) == -1) {
-                perror("select");
-                exit(EXIT_FAILURE);
-            }
-
-            // check if the input_fd has data to read (a socket or a file - not the stdin)
-            if (input_fd != STDIN_FILENO && FD_ISSET(input_fd, &read_fds)) {
-                char buffer[1024];
-                int bytes_read = read(input_fd, buffer, sizeof(buffer));  // read from the input_fd
-                if (bytes_read == -1) {
-                    perror("read");
-                    exit(EXIT_FAILURE);
-                }
-                if (bytes_read == 0) {
-                    break;
-                }
-                // write to the stdout
-                if (write(STDOUT_FILENO, buffer, bytes_read) == -1) {
-                    perror("write");
-                    exit(EXIT_FAILURE);
-                }
-            }
-
-            // check if the stdin has data to read (only if we need to write to the output_fd - output_fd != STDOUT_FILENO)
-            if (FD_ISSET(STDIN_FILENO, &read_fds) && output_fd != STDOUT_FILENO) {
-                char buffer[1024];
-                int bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer));  // read from the stdin
-                if (bytes_read == -1) {
-                    perror("read");
-                    exit(EXIT_FAILURE);
-                }
-                if (bytes_read == 0) {
-                    break;
-                }
-                if (write(output_fd, buffer, bytes_read) == -1) {
-                    perror("write");
-                    exit(EXIT_FAILURE);
-                }
-            }
-        }
+        chat_handler(input_fd, output_fd);
     }
+    
     // TODO: check how to close the sockets
     // close the file descriptors
     if (input_fd != STDIN_FILENO) {
