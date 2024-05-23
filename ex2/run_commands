@@ -4,7 +4,7 @@
 ./mync -e "./ttt 123456789" -b UDPS4269
 ./mync -e "./ttt 123456789" -b UDSSD/tmp/hoi
 ./mync -e "./ttt 123456789" -b UDSSS/tmp/hoi
-
+./mync -e "./ttt 123456789" -b TCPClocalhost,6699
 ./mync -b TCPS4269
 
 

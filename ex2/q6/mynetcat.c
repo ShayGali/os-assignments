@@ -545,6 +545,37 @@ void b_handler(char *b_value) {
             input_fd = new_fd;
             output_fd = new_fd;
         }
+    }
+    if (strncmp(b_value, "TCPC", 4) == 0) {
+        // open TCP client to connect to the server
+        b_value += 4;  // skip the "TCPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(b_value, &server_ip, &server_port);
+        int new_fd = connect_to_tcp_server(server_ip, server_port);
+        input_fd = new_fd;
+        output_fd = new_fd;
+    } else if (strncmp(b_value, "UDPC", 4) == 0) {
+        // open UDP client to connect to the server
+        b_value += 4;  // skip the "UDPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(b_value, &server_ip, &server_port);
+        int new_fd = udp_client(server_ip, server_port);
+        input_fd = new_fd;
+        output_fd = new_fd;
+    } else if (strncmp(b_value, "UDSC", 4) == 0) {
+        // open Unix Domain Socket client to connect to the server
+        b_value += 4;  // skip the "UDSC" prefix
+        if (*b_value == 'D') {
+            b_value++;  // skip the type character
+            int new_fd = uds_client_datagram(b_value);
+            input_fd = new_fd;
+            output_fd = new_fd;
+        } else if (*b_value == 'S') {
+            b_value++;  // skip the type character
+            int new_fd = uds_client_stream(b_value);
+            input_fd = new_fd;
+            output_fd = new_fd;
+        }
     } else {
         fprintf(stderr, "Invalid input\n");
         cleanup_and_exit(EXIT_FAILURE);
