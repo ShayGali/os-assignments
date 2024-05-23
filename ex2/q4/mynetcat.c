@@ -9,6 +9,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// start the input and output file descriptors with the default values
+// and will change them if needed
+int input_fd = STDIN_FILENO;
+int output_fd = STDOUT_FILENO;
+
 /**
  * Open a TCP server to listen to the given port and accept the connection
  * @param port the port to listen to
@@ -64,7 +69,7 @@ int open_tcp_server_and_accept(int port) {
  * @param server_port the server port
  * @param input_fd the file descriptor of the connection socket
  */
-int connect_to_tcp_server(char *server_addr, char *server_port, int input_fd) {
+int connect_to_tcp_server(char *server_addr, char *server_port) {
     // get address info
     struct addrinfo hints, *res, *p;
     int status;
@@ -159,15 +164,15 @@ void run_program(char *args_as_string) {
 
 /**
  * Open a TCP server to listen to the given port
+ * will change the input_fd to the new socket
  * @param i_value the port to listen to (in format "TCPS<port>")
- * @param input_fd the file descriptor to store the new socket (return value)
  */
-void i_handler(char *i_value, int *input_fd) {
+void i_handler(char *i_value) {
     // check if the prefix is TCPS
     if (strncmp(i_value, "TCPS", 4) == 0) {
         i_value += 4;  // skip the "TCPS" prefix
         int port = atoi(i_value);
-        *input_fd = open_tcp_server_and_accept(port);
+        input_fd = open_tcp_server_and_accept(port);
     } else {
         fprintf(stderr, "Invalid input\n");
         exit(EXIT_FAILURE);
@@ -177,10 +182,9 @@ void i_handler(char *i_value, int *input_fd) {
 /**
  * Open a TCP client to the given server
  * @param o_value the server IP and port (in format "TCPC<server_ip>,<server_port>")
- * @param input_fd the current input file descriptor (so that it can be closed if needed)
- * @param output_fd the file descriptor to store the new socket (return value)
+ * will change the output_fd to the new socket
  */
-void o_handler(char *o_value, int input_fd, int *output_fd) {
+void o_handler(char *o_value) {
     // check if the prefix is TCPC
     if (strncmp(o_value, "TCPC", 4) == 0) {
         o_value += 4;  // skip the "TCPC" prefix
@@ -198,7 +202,7 @@ void o_handler(char *o_value, int input_fd, int *output_fd) {
             fprintf(stderr, "Invalid server port\n");
             exit(EXIT_FAILURE);
         }
-        *output_fd = connect_to_tcp_server(server_ip, server_port, input_fd);
+        output_fd = connect_to_tcp_server(server_ip, server_port);
     } else {
         fprintf(stderr, "Invalid output\n");
         exit(EXIT_FAILURE);
@@ -206,21 +210,19 @@ void o_handler(char *o_value, int input_fd, int *output_fd) {
 }
 /**
  * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
+ * will change the input_fd and output_fd to the new socket
  * @param b_value the port to listen to (in format "TCPS<port>")
- * @param input_fd the file descriptor to store the new socket (return value)
- * @param output_fd the file descriptor to store the new socket (return value)
- *
  */
-void b_handler(char *b_value, int *input_fd, int *output_fd) {
+void b_handler(char *b_value) {
     // open TCP server to listen to the port
     b_value += 4;  // skip the "TCPS" prefix
     int port = atoi(b_value);
     int new_fd = open_tcp_server_and_accept(port);
-    *input_fd = new_fd;
-    *output_fd = new_fd;
+    input_fd = new_fd;
+    output_fd = new_fd;
 }
 
-void chat_handler(int input_fd, int output_fd) {
+void chat_handler() {
     // print to the stdout from the input_fd
     // send to output_fd from the stdin
     fd_set read_fds;
@@ -320,21 +322,16 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // start the input and output file descriptors with the default values
-    // and will change them if needed
-    int input_fd = STDIN_FILENO;
-    int output_fd = STDOUT_FILENO;
-
     if (i_value != NULL) {
-        i_handler(i_value, &input_fd);
+        i_handler(i_value);
     }
 
     if (o_value != NULL) {
-        o_handler(o_value, input_fd, &output_fd);
+        o_handler(o_value);
     }
 
     if (b_value != NULL) {
-        b_handler(b_value, &input_fd, &output_fd);
+        b_handler(b_value);
     }
 
     if (e_value != NULL) {
@@ -364,7 +361,7 @@ int main(int argc, char *argv[]) {
         // run the program with the given arguments
         run_program(e_value);
     } else {
-        chat_handler(input_fd, output_fd);
+        chat_handler();
     }
 
     // TODO: check how to close the sockets
