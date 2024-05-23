@@ -9,7 +9,7 @@
 ./mync -i TCPS4269
 
 # udp
-./mync -e "./ttt 123456789" -i UDPS4269
+./mync -e "./ttt 123456789" -i UDPS4269 -t 12
 
 # -o (open server and then run this)
 # tcp
