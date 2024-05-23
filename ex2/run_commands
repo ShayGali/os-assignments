@@ -1,7 +1,7 @@
 ./mync -e "./ttt 123456789"
 # -b
 ./mync -e "./ttt 123456789" -b TCPS4269
-./mync -b TCPS4269 
+./mync -b TCPS4269
 
 # -i (run this and then create client)
 # tcp
@@ -23,7 +23,7 @@
 # -i -o
 ./mync -e "./ttt 123456789" -i TCPS4269 -o TCPClocalhost,6699
 ./mync -e "./ttt 123456789" -i TCPS4269 -o TCPC127.0.0.1,6699
-
+./mync -e "./ttt 123456789" -i UDPS4269 -o TCPClocalhost,6699
 # ~~ netcat ~~
 
 # TCP server:
