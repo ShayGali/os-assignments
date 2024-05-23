@@ -14,6 +14,18 @@
 int input_fd = STDIN_FILENO;
 int output_fd = STDOUT_FILENO;
 
+void close_program(int sig) {
+    if (input_fd != STDIN_FILENO) {
+        close(input_fd);
+    }
+    if (output_fd != STDOUT_FILENO) {
+        close(output_fd);
+    }
+
+    printf("Timeout reached... BYEEEE\n");
+    exit(EXIT_SUCCESS);
+}
+
 /**
  * Open a TCP server to listen to the given port and accept the connection
  * @param port the port to listen to
@@ -283,8 +295,9 @@ void chat_handler() {
 }
 
 int main(int argc, char *argv[]) {
+    char *usage_msg = "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>] [-t <value>]\n";
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);
+        fprintf(stderr, usage_msg, argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -294,8 +307,9 @@ int main(int argc, char *argv[]) {
     char *b_value = NULL;
     char *i_value = NULL;
     char *o_value = NULL;
+    char *t_value = NULL;
 
-    while ((opt = getopt(argc, argv, "e:b:i:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "e:b:i:o:t:")) != -1) {
         switch (opt) {
             case 'e':
                 e_value = optarg;
@@ -309,16 +323,24 @@ int main(int argc, char *argv[]) {
             case 'o':
                 o_value = optarg;
                 break;
+            case 't':
+                t_value = optarg;
+                break;
             default:
-                fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);
+                fprintf(stderr, usage_msg, argv[0]);
                 exit(EXIT_FAILURE);
         }
+    }
+
+    if (t_value != NULL) {
+        signal(SIGALRM, close_program);
+        int timeout = atoi(t_value);
+        alarm(timeout);
     }
 
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
         fprintf(stderr, "Option -b cannot be used with -i or -o\n");
-        fprintf(stderr, "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
