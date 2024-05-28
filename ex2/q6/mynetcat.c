@@ -9,6 +9,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 // start the input and output file descriptors with the default values
 // and will change them if needed
 int input_fd = STDIN_FILENO;
@@ -18,7 +19,7 @@ void cleanup_and_exit(int exit_code) {
     if (input_fd != STDIN_FILENO) {
         close(input_fd);
     }
-    if (output_fd != STDOUT_FILENO) {
+    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
         close(output_fd);
     }
     exit(exit_code);
@@ -167,8 +168,6 @@ int udp_server(int port) {
         perror("error receiving data");
         cleanup_and_exit(EXIT_FAILURE);
     }
-    buffer[bytes_received] = '\0';
-    printf("dummy data received: %s\n", buffer);
 
     // call connect to save the client address
     if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
@@ -335,6 +334,12 @@ int uds_client_datagram(char *socket_path) {
     return sockfd;
 }
 
+/**
+ * Parse the hostname and port from the given string
+ * @param value the string to parse in the format "<hostname>,<port>"
+ * @param hostname the pointer to store the hostname (return value)
+ * @param port the pointer to store the port (return value)
+*/
 void parse_hostname_port(char *value, char **hostname, char **port) {
     // split the string to get the server IP/hostname and port
     *hostname = strtok(value, ",");
@@ -586,12 +591,8 @@ void chat_handler() {
     while (1) {
         FD_ZERO(&read_fds);
 
-        // check if we need to listen to the input_fd (only if it is not the stdin)
-        if (input_fd != STDIN_FILENO) {
-            FD_SET(input_fd, &read_fds);
-        }
-
-        // listen to the stdin
+        // add the file descriptors to the set
+        FD_SET(input_fd, &read_fds);  // we dont need to check if the input_fd == STDIN_FILENO, because it's a set
         FD_SET(STDIN_FILENO, &read_fds);
 
         // wait for any of the file descriptors to have data to read
@@ -683,12 +684,12 @@ int main(int argc, char *argv[]) {
 
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
-        fprintf(stderr, "Option -b cannot be used with -i or -o\n");
+        fprintf(stderr, "Error: Option -b cannot be used with -i or -o\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 
     if (b_value == NULL && i_value == NULL && o_value == NULL) {
-        fprintf(stderr, "At least one of -b, -i or -o must be provided\n");
+        fprintf(stderr, "Error: At least one of -b, -i or -o must be provided\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 

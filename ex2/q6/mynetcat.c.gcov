@@ -1,0 +1,744 @@
+        -:    0:Source:mynetcat.c
+        -:    0:Graph:mynetcat.gcno
+        -:    0:Data:mynetcat.gcda
+        -:    0:Runs:26
+        -:    1:#include <arpa/inet.h>
+        -:    2:#include <getopt.h>
+        -:    3:#include <netdb.h>
+        -:    4:#include <netinet/in.h>
+        -:    5:#include <stdio.h>
+        -:    6:#include <stdlib.h>
+        -:    7:#include <string.h>
+        -:    8:#include <sys/socket.h>
+        -:    9:#include <sys/un.h>
+        -:   10:#include <sys/wait.h>
+        -:   11:#include <unistd.h>
+        -:   12:
+        -:   13:// start the input and output file descriptors with the default values
+        -:   14:// and will change them if needed
+        -:   15:int input_fd = STDIN_FILENO;
+        -:   16:int output_fd = STDOUT_FILENO;
+        -:   17:
+    #####:   18:void cleanup_and_exit(int exit_code) {
+    #####:   19:    if (input_fd != STDIN_FILENO) {
+    #####:   20:        close(input_fd);
+        -:   21:    }
+    #####:   22:    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
+    #####:   23:        close(output_fd);
+        -:   24:    }
+    #####:   25:    exit(exit_code);
+        -:   26:}
+        -:   27:
+    #####:   28:void close_program(int sig) {
+    #####:   29:    cleanup_and_exit(EXIT_SUCCESS);
+    #####:   30:}
+        -:   31:
+        -:   32:/**
+        -:   33: * Open a TCP server to listen to the given port and accept the connection
+        -:   34: * @param port the port to listen to
+        -:   35: * @return the file descriptor of the connected socket
+        -:   36: */
+       15:   37:int open_tcp_server_and_accept(int port) {
+        -:   38:    // create TCP socket that will listen to input on localhost:port
+       15:   39:    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+       15:   40:    if (sockfd == -1) {
+    #####:   41:        perror("error creating socket");
+    #####:   42:        cleanup_and_exit(EXIT_FAILURE);
+        -:   43:    }
+        -:   44:
+        -:   45:    // allow the socket to be reused
+       15:   46:    int optval = 1;
+       15:   47:    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+    #####:   48:        perror("setsockopt");
+    #####:   49:        cleanup_and_exit(EXIT_FAILURE);
+        -:   50:    }
+        -:   51:
+        -:   52:    // bind the socket to the address
+        -:   53:    struct sockaddr_in addr;
+       15:   54:    addr.sin_family = AF_INET;
+       15:   55:    addr.sin_port = htons(port);
+       15:   56:    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        -:   57:
+       15:   58:    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    #####:   59:        perror("error binding socket");
+    #####:   60:        cleanup_and_exit(EXIT_FAILURE);
+        -:   61:    }
+        -:   62:
+        -:   63:    // listen for incoming connections - at most 1
+       15:   64:    if (listen(sockfd, 1) == -1) {
+    #####:   65:        perror("error listening on socket");
+    #####:   66:        cleanup_and_exit(EXIT_FAILURE);
+        -:   67:    }
+        -:   68:
+        -:   69:    // accept the connection and change the input_fd to the new socket
+        -:   70:    struct sockaddr_in client_addr;
+       15:   71:    socklen_t client_addr_len = sizeof(client_addr);
+       15:   72:    int client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len);
+        -:   73:
+       15:   74:    if (client_fd == -1) {
+    #####:   75:        perror("error accepting connection");
+    #####:   76:        cleanup_and_exit(EXIT_FAILURE);
+        -:   77:    }
+       15:   78:    return client_fd;
+        -:   79:}
+        -:   80:
+        -:   81:/**
+        -:   82: * Connect to a TCP server
+        -:   83: * @param server_addr the server IP or hostname
+        -:   84: * @param server_port the server port
+        -:   85: * @param input_fd the file descriptor of the connection socket
+        -:   86: */
+       11:   87:int connect_to_tcp_server(char *server_addr, char *server_port) {
+        -:   88:    // get address info
+        -:   89:    struct addrinfo hints, *res, *p;
+        -:   90:    int status;
+        -:   91:    int sockfd;
+        -:   92:
+        -:   93:    // set up the hints structure
+       11:   94:    memset(&hints, 0, sizeof hints);
+       11:   95:    hints.ai_socktype = SOCK_STREAM;
+        -:   96:
+        -:   97:    // get address info
+       11:   98:    if ((status = getaddrinfo(server_addr, server_port, &hints, &res)) != 0) {
+    #####:   99:        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+    #####:  100:        cleanup_and_exit(EXIT_FAILURE);
+        -:  101:    }
+        -:  102:
+        -:  103:    // loop through the results and connect to the first we can
+      11*:  104:    for (p = res; p != NULL; p = p->ai_next) {
+       11:  105:        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+    #####:  106:            perror("error creating socket");
+    #####:  107:            continue;
+        -:  108:        }
+        -:  109:
+       11:  110:        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    #####:  111:            close(sockfd);
+    #####:  112:            perror("error connecting to server");
+    #####:  113:            continue;
+        -:  114:        }
+        -:  115:
+       11:  116:        break;  // if we get here, we must have connected successfully
+        -:  117:    }
+        -:  118:
+       11:  119:    if (p == NULL) {
+    #####:  120:        fprintf(stderr, "failed to connect\n");
+    #####:  121:        cleanup_and_exit(EXIT_FAILURE);
+        -:  122:    }
+        -:  123:
+       11:  124:    freeaddrinfo(res);  // free the linked list
+        -:  125:
+       11:  126:    return sockfd;
+        -:  127:}
+        -:  128:
+        -:  129:/**
+        -:  130: * Open a UDP server to listen to the given port
+        -:  131: * Will wait to receive a dummy data to get the client address
+        -:  132: * @param port the port to listen to
+        -:  133: * @return the file descriptor of the connection socket
+        -:  134: */
+    #####:  135:int udp_server(int port) {
+        -:  136:    // create UDP socket that will listen to input on localhost:port
+    #####:  137:    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    #####:  138:    if (sockfd == -1) {
+    #####:  139:        perror("error creating socket");
+    #####:  140:        cleanup_and_exit(EXIT_FAILURE);
+        -:  141:    }
+        -:  142:
+        -:  143:    // allow the socket to be reused
+    #####:  144:    int optval = 1;
+    #####:  145:    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+    #####:  146:        perror("setsockopt");
+    #####:  147:        cleanup_and_exit(EXIT_FAILURE);
+        -:  148:    }
+        -:  149:
+        -:  150:    // bind the socket to the address
+        -:  151:    struct sockaddr_in addr;
+    #####:  152:    addr.sin_family = AF_INET;
+    #####:  153:    addr.sin_port = htons(port);
+    #####:  154:    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        -:  155:
+    #####:  156:    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    #####:  157:        perror("error binding socket");
+    #####:  158:        cleanup_and_exit(EXIT_FAILURE);
+        -:  159:    }
+        -:  160:
+        -:  161:    // receive dummy data to get the client address
+        -:  162:    char buffer[1024];
+        -:  163:    struct sockaddr_in client_addr;
+    #####:  164:    socklen_t client_addr_len = sizeof(client_addr);
+        -:  165:
+    #####:  166:    int bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_addr_len);
+    #####:  167:    if (bytes_received == -1) {
+    #####:  168:        perror("error receiving data");
+    #####:  169:        cleanup_and_exit(EXIT_FAILURE);
+        -:  170:    }
+        -:  171:
+        -:  172:    // call connect to save the client address
+    #####:  173:    if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
+    #####:  174:        perror("error connecting to client");
+    #####:  175:        cleanup_and_exit(EXIT_FAILURE);
+        -:  176:    }
+        -:  177:
+    #####:  178:    return sockfd;
+        -:  179:}
+        -:  180:
+        -:  181:/**
+        -:  182: * Connect to a UDP server
+        -:  183: * @param server_ip the server IP or hostname
+        -:  184: * @param server_port the server port
+        -:  185: * @return the file descriptor of the connection socket
+        -:  186: */
+    #####:  187:int udp_client(char *server_ip, char *server_port) {
+        -:  188:    // get address info
+        -:  189:    struct addrinfo hints, *res, *p;
+        -:  190:    int status;
+        -:  191:    int sockfd;
+        -:  192:
+        -:  193:    // set up the hints structure
+    #####:  194:    memset(&hints, 0, sizeof hints);
+    #####:  195:    hints.ai_socktype = SOCK_DGRAM;
+        -:  196:
+        -:  197:    // get address info
+    #####:  198:    if ((status = getaddrinfo(server_ip, server_port, &hints, &res)) != 0) {
+    #####:  199:        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+    #####:  200:        cleanup_and_exit(EXIT_FAILURE);
+        -:  201:    }
+        -:  202:
+        -:  203:    // loop through the results and connect to the first we can
+    #####:  204:    for (p = res; p != NULL; p = p->ai_next) {
+    #####:  205:        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+    #####:  206:            perror("error creating socket");
+    #####:  207:            continue;
+        -:  208:        }
+    #####:  209:        sendto(sockfd, "Conn msg\n", 9, 0, p->ai_addr, p->ai_addrlen);
+        -:  210:        // "connect" to the server - so if we use sendto/recvfrom, we don't need to specify the server address
+    #####:  211:        connect(sockfd, p->ai_addr, p->ai_addrlen);
+        -:  212:
+    #####:  213:        break;  // if we get here, we must have connected successfully
+        -:  214:    }
+        -:  215:
+    #####:  216:    if (p == NULL) {
+    #####:  217:        fprintf(stderr, "failed to connect\n");
+    #####:  218:        cleanup_and_exit(EXIT_FAILURE);
+        -:  219:    }
+        -:  220:
+    #####:  221:    freeaddrinfo(res);  // free the linked list
+        -:  222:
+    #####:  223:    return sockfd;
+        -:  224:}
+        -:  225:
+    #####:  226:int uds_server_stream(char *socket_path) {
+        -:  227:    // create a socket
+    #####:  228:    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    #####:  229:    if (sockfd == -1) {
+    #####:  230:        perror("error creating socket");
+    #####:  231:        cleanup_and_exit(EXIT_FAILURE);
+        -:  232:    }
+        -:  233:
+        -:  234:    // bind the socket to the address
+        -:  235:    struct sockaddr_un addr;
+    #####:  236:    addr.sun_family = AF_UNIX;
+    #####:  237:    strcpy(addr.sun_path, socket_path);
+        -:  238:
+    #####:  239:    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    #####:  240:        perror("error binding socket");
+    #####:  241:        cleanup_and_exit(EXIT_FAILURE);
+        -:  242:    }
+        -:  243:
+        -:  244:    // listen for incoming connections - at most 1
+    #####:  245:    if (listen(sockfd, 1) == -1) {
+    #####:  246:        perror("error listening on socket");
+    #####:  247:        cleanup_and_exit(EXIT_FAILURE);
+        -:  248:    }
+        -:  249:
+        -:  250:    // accept the connection and change the input_fd to the new socket
+        -:  251:    struct sockaddr_un client_addr;
+    #####:  252:    socklen_t client_addr_len = sizeof(client_addr);
+    #####:  253:    int client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_addr_len);
+        -:  254:
+    #####:  255:    if (client_fd == -1) {
+    #####:  256:        perror("error accepting connection");
+    #####:  257:        cleanup_and_exit(EXIT_FAILURE);
+        -:  258:    }
+    #####:  259:    return client_fd;
+        -:  260:}
+        -:  261:
+    #####:  262:int uds_server_datagram(char *socket_path) {
+        -:  263:    // create a socket
+    #####:  264:    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    #####:  265:    if (sockfd == -1) {
+    #####:  266:        perror("error creating socket");
+    #####:  267:        cleanup_and_exit(EXIT_FAILURE);
+        -:  268:    }
+        -:  269:
+        -:  270:    // bind the socket to the address
+        -:  271:    struct sockaddr_un addr;
+    #####:  272:    addr.sun_family = AF_UNIX;
+    #####:  273:    strcpy(addr.sun_path, socket_path);
+        -:  274:
+    #####:  275:    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    #####:  276:        printf("%s\n", addr.sun_path);
+    #####:  277:        perror("error binding socket");
+    #####:  278:        cleanup_and_exit(EXIT_FAILURE);
+        -:  279:    }
+        -:  280:
+        -:  281:    // receive dummy data to get the client address
+        -:  282:    char buffer[1024];
+        -:  283:    struct sockaddr_un client_addr;
+    #####:  284:    socklen_t client_addr_len = sizeof(client_addr);
+        -:  285:
+    #####:  286:    int bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_addr_len);
+    #####:  287:    if (bytes_received == -1) {
+    #####:  288:        perror("error receiving data");
+    #####:  289:        cleanup_and_exit(EXIT_FAILURE);
+        -:  290:    }
+        -:  291:
+        -:  292:    // call connect to save the client address
+    #####:  293:    if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
+    #####:  294:        perror("error connecting to client");
+    #####:  295:        cleanup_and_exit(EXIT_FAILURE);
+        -:  296:    }
+    #####:  297:    return sockfd;
+        -:  298:}
+        -:  299:
+    #####:  300:int uds_client_stream(char *socket_path) {
+        -:  301:    // create a socket
+    #####:  302:    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    #####:  303:    if (sockfd == -1) {
+    #####:  304:        perror("error creating socket");
+    #####:  305:        cleanup_and_exit(EXIT_FAILURE);
+        -:  306:    }
+        -:  307:
+        -:  308:    // connect to the server
+        -:  309:    struct sockaddr_un addr;
+    #####:  310:    addr.sun_family = AF_UNIX;
+    #####:  311:    strcpy(addr.sun_path, socket_path);
+        -:  312:
+    #####:  313:    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    #####:  314:        perror("error connecting to server");
+    #####:  315:        cleanup_and_exit(EXIT_FAILURE);
+        -:  316:    }
+        -:  317:
+    #####:  318:    return sockfd;
+        -:  319:}
+        -:  320:
+    #####:  321:int uds_client_datagram(char *socket_path) {
+        -:  322:    // create a socket
+    #####:  323:    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    #####:  324:    if (sockfd == -1) {
+    #####:  325:        perror("error creating socket");
+    #####:  326:        cleanup_and_exit(EXIT_FAILURE);
+        -:  327:    }
+        -:  328:
+        -:  329:    // connect to the server
+        -:  330:    struct sockaddr_un addr;
+    #####:  331:    addr.sun_family = AF_UNIX;
+    #####:  332:    strcpy(addr.sun_path, socket_path);
+        -:  333:
+    #####:  334:    return sockfd;
+        -:  335:}
+        -:  336:
+        -:  337:/**
+        -:  338: * Parse the hostname and port from the given string
+        -:  339: * @param value the string to parse in the format "<hostname>,<port>"
+        -:  340: * @param hostname the pointer to store the hostname (return value)
+        -:  341: * @param port the pointer to store the port (return value)
+        -:  342:*/
+       11:  343:void parse_hostname_port(char *value, char **hostname, char **port) {
+        -:  344:    // split the string to get the server IP/hostname and port
+       11:  345:    *hostname = strtok(value, ",");
+       11:  346:    if (*hostname == NULL) {
+    #####:  347:        fprintf(stderr, "Invalid server IP/hostname\n");
+    #####:  348:        cleanup_and_exit(EXIT_FAILURE);
+        -:  349:    }
+        -:  350:
+        -:  351:    // get the rest of the string after the comma
+       11:  352:    *port = strtok(NULL, ",");
+       11:  353:    if (*port == NULL) {
+    #####:  354:        fprintf(stderr, "Invalid server port\n");
+    #####:  355:        cleanup_and_exit(EXIT_FAILURE);
+        -:  356:    }
+       11:  357:}
+        -:  358:
+        -:  359:/**
+        -:  360: * Run the program with the given arguments
+        -:  361: */
+       22:  362:void run_program(char *args_as_string) {
+        -:  363:    // tokenize the string - split by space
+       22:  364:    char *token = strtok(args_as_string, " ");
+        -:  365:
+       22:  366:    if (token == NULL) {
+    #####:  367:        fprintf(stderr, "No arguments provided\n");
+    #####:  368:        cleanup_and_exit(EXIT_FAILURE);
+        -:  369:    }
+        -:  370:    // create an array of strings to store the arguments
+       22:  371:    char **args = (char **)malloc(sizeof(char *));
+       22:  372:    int n = 0;          // number of arguments
+       22:  373:    args[n++] = token;  // add the first argument
+        -:  374:
+        -:  375:    // get the rest of the arguments
+       66:  376:    while (token != NULL) {
+       44:  377:        token = strtok(NULL, " ");                                    // get the next token (NULL - take the next token from the previous string)
+       44:  378:        char **t = (char **)realloc(args, (n + 1) * sizeof(char *));  // allocate memory for the new argument
+        -:  379:        // check if the memory allocation failed
+       44:  380:        if (t == NULL) {
+    #####:  381:            fprintf(stderr, "Memory allocation failed\n");
+    #####:  382:            free(args);
+    #####:  383:            cleanup_and_exit(EXIT_FAILURE);
+        -:  384:        }
+       44:  385:        args = t;
+       44:  386:        args[n++] = token;  // add the new argument and increment the number of arguments
+        -:  387:    }
+        -:  388:    // fork and execute the program
+       22:  389:    int fd = fork();
+       44:  390:    if (fd < 0) {  // fork failed
+    #####:  391:        fprintf(stderr, "Fork failed\n");
+    #####:  392:        cleanup_and_exit(EXIT_FAILURE);
+        -:  393:    }
+        -:  394:
+       44:  395:    if (fd == 0) {  // child process
+       22:  396:        execvp(args[0], args);
+       22:  397:        fprintf(stderr, "Exec failed\n");
+    #####:  398:        free(args);
+    #####:  399:        cleanup_and_exit(EXIT_FAILURE);
+        -:  400:    } else {
+       22:  401:        wait(NULL);  // wait for the child process to finish
+        -:  402:        // free the memory
+       22:  403:        free(args);
+       22:  404:        fflush(stdout);
+        -:  405:    }
+       22:  406:}
+        -:  407:
+        -:  408:/**
+        -:  409: * Open a TCP server to listen to the given port
+        -:  410: * will change the input_fd to the new socket
+        -:  411: * @param i_value the port to listen to (in format "TCPS<port>")
+        -:  412: */
+        6:  413:void i_handler(char *i_value) {
+        -:  414:    // check if the prefix is TCPS
+        6:  415:    if (strncmp(i_value, "TCPS", 4) == 0) {
+        3:  416:        i_value += 4;  // skip the "TCPS" prefix
+        3:  417:        int port = atoi(i_value);
+        3:  418:        input_fd = open_tcp_server_and_accept(port);
+        3:  419:    } else if (strncmp(i_value, "UDPS", 4) == 0) {
+    #####:  420:        i_value += 4;  // skip the "UDPS" prefix
+    #####:  421:        int port = atoi(i_value);
+    #####:  422:        input_fd = udp_server(port);
+        3:  423:    } else if (strncmp(i_value, "UDSS", 4) == 0) {
+        -:  424:        // open Unix Domain Socket server on the given path
+    #####:  425:        i_value += 4;  // skip the "UDSS" prefix
+    #####:  426:        if (*i_value == 'D') {
+    #####:  427:            i_value++;  // skip the type character
+    #####:  428:            input_fd = uds_server_datagram(i_value);
+    #####:  429:        } else if (*i_value == 'S') {
+    #####:  430:            i_value++;  // skip the type character
+    #####:  431:            input_fd = uds_server_stream(i_value);
+        -:  432:        } else {
+    #####:  433:            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
+        -:  434:        }
+        3:  435:    } else if (strncmp(i_value, "TCPC", 4) == 0) {
+        3:  436:        i_value += 4;  // skip the "TCPC" prefix
+        -:  437:        char *server_ip, *server_port;
+        3:  438:        parse_hostname_port(i_value, &server_ip, &server_port);
+        3:  439:        input_fd = connect_to_tcp_server(server_ip, server_port);
+    #####:  440:    } else if (strncmp(i_value, "UDPC", 4) == 0) {
+    #####:  441:        i_value += 4;  // skip the "UDPC" prefix
+        -:  442:        char *server_ip, *server_port;
+    #####:  443:        parse_hostname_port(i_value, &server_ip, &server_port);
+    #####:  444:        input_fd = udp_client(server_ip, server_port);
+    #####:  445:    } else if (strncmp(i_value, "UDSC", 4) == 0) {
+    #####:  446:        i_value += 4;  // skip the "UDSC" prefix
+    #####:  447:        if (*i_value == 'D') {
+    #####:  448:            i_value++;  // skip the type character
+    #####:  449:            input_fd = uds_client_datagram(i_value);
+    #####:  450:        } else if (*i_value == 'S') {
+    #####:  451:            i_value++;  // skip the type character
+    #####:  452:            input_fd = uds_client_stream(i_value);
+        -:  453:        } else {
+    #####:  454:            fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
+        -:  455:        }
+        -:  456:    } else {
+    #####:  457:        fprintf(stderr, "Invalid input. Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
+    #####:  458:        cleanup_and_exit(EXIT_FAILURE);
+        -:  459:    }
+        6:  460:}
+        -:  461:
+        -:  462:/**
+        -:  463: * Open a TCP client to the given server
+        -:  464: * @param o_value the server IP and port (in format "TCPC<server_ip>,<server_port>")
+        -:  465: * will change the output_fd to the new socket
+        -:  466: */
+    #####:  467:void o_handler(char *o_value) {
+        -:  468:    // check if the prefix is TCPS
+    #####:  469:    if (strncmp(o_value, "TCPS", 4) == 0) {
+    #####:  470:        o_value += 4;  // skip the "TCPS" prefix
+    #####:  471:        int port = atoi(o_value);
+    #####:  472:        output_fd = open_tcp_server_and_accept(port);
+    #####:  473:    } else if (strncmp(o_value, "UDPS", 4) == 0) {
+    #####:  474:        o_value += 4;  // skip the "UDPS" prefix
+    #####:  475:        int port = atoi(o_value);
+    #####:  476:        output_fd = udp_server(port);
+    #####:  477:    } else if (strncmp(o_value, "UDSS", 4) == 0) {
+        -:  478:        // open Unix Domain Socket server on the given path
+    #####:  479:        o_value += 4;  // skip the "UDSS" prefix
+    #####:  480:        if (*o_value == 'D') {
+    #####:  481:            o_value++;  // skip the type character
+    #####:  482:            output_fd = uds_server_datagram(o_value);
+    #####:  483:        } else if (*o_value == 'S') {
+    #####:  484:            o_value++;  // skip the type character
+    #####:  485:            output_fd = uds_server_stream(o_value);
+        -:  486:        } else {
+    #####:  487:            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
+        -:  488:        }
+    #####:  489:    } else if (strncmp(o_value, "TCPC", 4) == 0) {
+    #####:  490:        o_value += 4;  // skip the "TCPC" prefix
+        -:  491:        char *server_ip, *server_port;
+    #####:  492:        parse_hostname_port(o_value, &server_ip, &server_port);
+    #####:  493:        output_fd = connect_to_tcp_server(server_ip, server_port);
+    #####:  494:    } else if (strncmp(o_value, "UDPC", 4) == 0) {
+    #####:  495:        o_value += 4;  // skip the "UDPC" prefix
+        -:  496:        char *server_ip, *server_port;
+    #####:  497:        parse_hostname_port(o_value, &server_ip, &server_port);
+    #####:  498:        output_fd = udp_client(server_ip, server_port);
+    #####:  499:    } else if (strncmp(o_value, "UDSC", 4) == 0) {
+    #####:  500:        o_value += 4;  // skip the "UDSC" prefix
+    #####:  501:        if (*o_value == 'D') {
+    #####:  502:            o_value++;  // skip the type character
+    #####:  503:            output_fd = uds_client_datagram(o_value);
+    #####:  504:        } else if (*o_value == 'S') {
+    #####:  505:            o_value++;  // skip the type character
+    #####:  506:            output_fd = uds_client_stream(o_value);
+        -:  507:        } else {
+    #####:  508:            fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
+        -:  509:        }
+        -:  510:    } else {
+    #####:  511:        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
+    #####:  512:        cleanup_and_exit(EXIT_FAILURE);
+        -:  513:    }
+    #####:  514:}
+        -:  515:/**
+        -:  516: * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
+        -:  517: * will change the input_fd and output_fd to the new socket
+        -:  518: * @param b_value the port to listen to (in format "TCPS<port>")
+        -:  519: */
+       20:  520:void b_handler(char *b_value) {
+       20:  521:    if (strncmp(b_value, "TCPS", 4) == 0) {
+        -:  522:        // open TCP server to listen to the port
+       12:  523:        b_value += 4;  // skip the "TCPS" prefix
+       12:  524:        int port = atoi(b_value);
+       12:  525:        int new_fd = open_tcp_server_and_accept(port);
+       12:  526:        input_fd = new_fd;
+       12:  527:        output_fd = new_fd;
+        8:  528:    } else if (strncmp(b_value, "UDPS", 4) == 0) {
+        -:  529:        // open UDP server to listen to the port
+    #####:  530:        b_value += 4;  // skip the "UDPS" prefix
+    #####:  531:        int port = atoi(b_value);
+    #####:  532:        int new_fd = udp_server(port);
+    #####:  533:        input_fd = new_fd;
+    #####:  534:        output_fd = new_fd;
+        8:  535:    } else if (strncmp(b_value, "UDSS", 4) == 0) {
+        -:  536:        // open Unix Domain Socket server on the given path
+    #####:  537:        b_value += 4;  // skip the "UDSS" prefix
+    #####:  538:        if (*b_value == 'D') {
+    #####:  539:            b_value++;  // skip the type character
+    #####:  540:            int new_fd = uds_server_datagram(b_value);
+    #####:  541:            input_fd = new_fd;
+    #####:  542:            output_fd = new_fd;
+    #####:  543:        } else if (*b_value == 'S') {
+    #####:  544:            b_value++;  // skip the type character
+    #####:  545:            int new_fd = uds_server_stream(b_value);
+    #####:  546:            input_fd = new_fd;
+    #####:  547:            output_fd = new_fd;
+        -:  548:        }
+        8:  549:    } else if (strncmp(b_value, "TCPC", 4) == 0) {
+        -:  550:        // open TCP client to connect to the server
+        8:  551:        b_value += 4;  // skip the "TCPC" prefix
+        -:  552:        char *server_ip, *server_port;
+        8:  553:        parse_hostname_port(b_value, &server_ip, &server_port);
+        8:  554:        int new_fd = connect_to_tcp_server(server_ip, server_port);
+        8:  555:        input_fd = new_fd;
+        8:  556:        output_fd = new_fd;
+    #####:  557:    } else if (strncmp(b_value, "UDPC", 4) == 0) {
+        -:  558:        // open UDP client to connect to the server
+    #####:  559:        b_value += 4;  // skip the "UDPC" prefix
+        -:  560:        char *server_ip, *server_port;
+    #####:  561:        parse_hostname_port(b_value, &server_ip, &server_port);
+    #####:  562:        int new_fd = udp_client(server_ip, server_port);
+    #####:  563:        input_fd = new_fd;
+    #####:  564:        output_fd = new_fd;
+    #####:  565:    } else if (strncmp(b_value, "UDSC", 4) == 0) {
+        -:  566:        // open Unix Domain Socket client to connect to the server
+    #####:  567:        b_value += 4;  // skip the "UDSC" prefix
+    #####:  568:        if (*b_value == 'D') {
+    #####:  569:            b_value++;  // skip the type character
+    #####:  570:            int new_fd = uds_client_datagram(b_value);
+    #####:  571:            input_fd = new_fd;
+    #####:  572:            output_fd = new_fd;
+    #####:  573:        } else if (*b_value == 'S') {
+    #####:  574:            b_value++;  // skip the type character
+    #####:  575:            int new_fd = uds_client_stream(b_value);
+    #####:  576:            input_fd = new_fd;
+    #####:  577:            output_fd = new_fd;
+        -:  578:        }
+        -:  579:    } else {
+    #####:  580:        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
+    #####:  581:        cleanup_and_exit(EXIT_FAILURE);
+        -:  582:    }
+       20:  583:}
+        -:  584:
+        4:  585:void chat_handler() {
+        -:  586:    // print to the stdout from the input_fd
+        -:  587:    // send to output_fd from the stdin
+        -:  588:    fd_set read_fds;
+        4:  589:    int max_fd = input_fd;
+        -:  590:
+        -:  591:    while (1) {
+        8:  592:        FD_ZERO(&read_fds);
+        -:  593:
+        -:  594:        // add the file descriptors to the set
+        8:  595:        FD_SET(input_fd, &read_fds);  // we dont need to check if the input_fd == STDIN_FILENO, because it's a set
+        8:  596:        FD_SET(STDIN_FILENO, &read_fds);
+        -:  597:
+        -:  598:        // wait for any of the file descriptors to have data to read
+        8:  599:        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) == -1) {
+    #####:  600:            perror("select");
+    #####:  601:            cleanup_and_exit(EXIT_FAILURE);
+        -:  602:        }
+        -:  603:
+        -:  604:        // check if the input_fd has data to read (a socket or a file - not the stdin)
+        8:  605:        if (input_fd != STDIN_FILENO && FD_ISSET(input_fd, &read_fds)) {
+        -:  606:            char buffer[1024];
+        4:  607:            int bytes_read = read(input_fd, buffer, sizeof(buffer));  // read from the input_fd
+        4:  608:            if (bytes_read == -1) {
+    #####:  609:                perror("read");
+    #####:  610:                cleanup_and_exit(EXIT_FAILURE);
+        -:  611:            }
+        4:  612:            if (bytes_read == 0) {
+    #####:  613:                break;
+        -:  614:            }
+        -:  615:            // write to the stdout
+        4:  616:            if (write(STDOUT_FILENO, buffer, bytes_read) == -1) {
+    #####:  617:                perror("write");
+    #####:  618:                cleanup_and_exit(EXIT_FAILURE);
+        -:  619:            }
+        -:  620:        }
+        -:  621:
+        -:  622:        // check if the stdin has data to read (only if we need to write to the output_fd - output_fd != STDOUT_FILENO)
+        8:  623:        if (FD_ISSET(STDIN_FILENO, &read_fds) && output_fd != STDOUT_FILENO) {
+        -:  624:            char buffer[1024];
+        8:  625:            int bytes_read = read(STDIN_FILENO, buffer, sizeof(buffer));  // read from the stdin
+        8:  626:            if (bytes_read == -1) {
+    #####:  627:                perror("read");
+    #####:  628:                cleanup_and_exit(EXIT_FAILURE);
+        -:  629:            }
+        8:  630:            if (bytes_read == 0) {
+        4:  631:                break;
+        -:  632:            }
+        4:  633:            if (write(output_fd, buffer, bytes_read) == -1) {
+    #####:  634:                perror("write");
+    #####:  635:                cleanup_and_exit(EXIT_FAILURE);
+        -:  636:            }
+        -:  637:        }
+        -:  638:    }
+        4:  639:}
+        -:  640:
+       26:  641:int main(int argc, char *argv[]) {
+       26:  642:    char *usage_msg = "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>] [-t <value>]\n";
+       26:  643:    if (argc < 2) {
+    #####:  644:        fprintf(stderr, usage_msg, argv[0]);
+    #####:  645:        cleanup_and_exit(EXIT_FAILURE);
+        -:  646:    }
+        -:  647:
+        -:  648:    // parse the arguments
+        -:  649:    int opt;
+       26:  650:    char *e_value = NULL;
+       26:  651:    char *b_value = NULL;
+       26:  652:    char *i_value = NULL;
+       26:  653:    char *o_value = NULL;
+       26:  654:    char *t_value = NULL;
+        -:  655:
+       74:  656:    while ((opt = getopt(argc, argv, "e:b:i:o:t:")) != -1) {
+       48:  657:        switch (opt) {
+       22:  658:            case 'e':
+       22:  659:                e_value = optarg;
+       22:  660:                break;
+       20:  661:            case 'b':
+       20:  662:                b_value = optarg;
+       20:  663:                break;
+        6:  664:            case 'i':
+        6:  665:                i_value = optarg;
+        6:  666:                break;
+    #####:  667:            case 'o':
+    #####:  668:                o_value = optarg;
+    #####:  669:                break;
+    #####:  670:            case 't':
+    #####:  671:                t_value = optarg;
+    #####:  672:                break;
+    #####:  673:            default:
+    #####:  674:                fprintf(stderr, usage_msg, argv[0]);
+    #####:  675:                cleanup_and_exit(EXIT_FAILURE);
+        -:  676:        }
+        -:  677:    }
+        -:  678:
+       26:  679:    if (t_value != NULL) {
+    #####:  680:        signal(SIGALRM, close_program);
+    #####:  681:        int timeout = atoi(t_value);
+    #####:  682:        alarm(timeout);
+        -:  683:    }
+        -:  684:
+        -:  685:    // check if -b is used with -i or -o (if so, print an error message and exit the program)
+       26:  686:    if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
+    #####:  687:        fprintf(stderr, "Error: Option -b cannot be used with -i or -o\n");
+    #####:  688:        cleanup_and_exit(EXIT_FAILURE);
+        -:  689:    }
+        -:  690:
+      26*:  691:    if (b_value == NULL && i_value == NULL && o_value == NULL) {
+    #####:  692:        fprintf(stderr, "Error: At least one of -b, -i or -o must be provided\n");
+    #####:  693:        cleanup_and_exit(EXIT_FAILURE);
+        -:  694:    }
+        -:  695:
+       26:  696:    if (i_value != NULL) {
+        6:  697:        i_handler(i_value);
+        -:  698:    }
+        -:  699:
+       26:  700:    if (o_value != NULL) {
+    #####:  701:        o_handler(o_value);
+        -:  702:    }
+        -:  703:
+       26:  704:    if (b_value != NULL) {
+       20:  705:        b_handler(b_value);
+        -:  706:    }
+        -:  707:
+       26:  708:    if (e_value != NULL) {
+        -:  709:        // redirect the input and output to the new file descriptors
+       22:  710:        if (input_fd != STDIN_FILENO) {
+       22:  711:            if (dup2(input_fd, STDIN_FILENO) == -1) {
+    #####:  712:                perror("dup2 input");
+    #####:  713:                cleanup_and_exit(EXIT_FAILURE);
+        -:  714:            }
+        -:  715:        }
+        -:  716:
+       22:  717:        if (output_fd != STDOUT_FILENO) {
+       16:  718:            if (dup2(output_fd, STDOUT_FILENO) == -1) {
+    #####:  719:                perror("dup2 output");
+    #####:  720:                cleanup_and_exit(EXIT_FAILURE);
+        -:  721:            }
+        -:  722:        }
+        -:  723:
+        -:  724:        // run the program with the given arguments
+       22:  725:        run_program(e_value);
+        -:  726:    } else {
+        4:  727:        chat_handler();
+        -:  728:    }
+        -:  729:
+        -:  730:    // TODO: check how to close the sockets
+        -:  731:    // close the file descriptors
+       26:  732:    if (input_fd != STDIN_FILENO) {
+       26:  733:        close(input_fd);
+        -:  734:    }
+        -:  735:
+       26:  736:    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
+    #####:  737:        close(output_fd);
+        -:  738:    }
+       26:  739:    return 0;
+        -:  740:}
