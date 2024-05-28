@@ -8,10 +8,10 @@ PROGS=mync ttt
 all: $(PROGS)
 
 mync: mynetcat.c
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) -fprofile-arcs -ftest-coverage $(CFLAGS) -o $@ $^
 
 ttt: ttt.c
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) -fprofile-arcs -ftest-coverage $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f $(PROGS) *.o
+	rm -f $(PROGS) *.o *.gcno *.gcda *.gcovs
