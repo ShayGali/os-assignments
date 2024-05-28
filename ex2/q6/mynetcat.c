@@ -339,7 +339,7 @@ int uds_client_datagram(char *socket_path) {
  * @param value the string to parse in the format "<hostname>,<port>"
  * @param hostname the pointer to store the hostname (return value)
  * @param port the pointer to store the port (return value)
-*/
+ */
 void parse_hostname_port(char *value, char **hostname, char **port) {
     // split the string to get the server IP/hostname and port
     *hostname = strtok(value, ",");
