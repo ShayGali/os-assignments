@@ -167,6 +167,8 @@ int udp_server(int port) {
         perror("error receiving data");
         cleanup_and_exit(EXIT_FAILURE);
     }
+    buffer[bytes_received] = '\0';
+    printf("dummy data received: %s\n", buffer);
 
     // call connect to save the client address
     if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
@@ -205,7 +207,7 @@ int udp_client(char *server_ip, char *server_port) {
             perror("error creating socket");
             continue;
         }
-        sendto(sockfd, "Hello", 5, 0, p->ai_addr, p->ai_addrlen);
+        sendto(sockfd, "Conn msg\n", 9, 0, p->ai_addr, p->ai_addrlen);
         // "connect" to the server - so if we use sendto/recvfrom, we don't need to specify the server address
         connect(sockfd, p->ai_addr, p->ai_addrlen);
 
@@ -293,7 +295,6 @@ int uds_server_datagram(char *socket_path) {
         perror("error connecting to client");
         cleanup_and_exit(EXIT_FAILURE);
     }
-
     return sockfd;
 }
 
@@ -330,11 +331,6 @@ int uds_client_datagram(char *socket_path) {
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, socket_path);
-
-    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        perror("error connecting to server");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
 
     return sockfd;
 }
@@ -507,7 +503,7 @@ void o_handler(char *o_value) {
             fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
         }
     } else {
-        fprintf(stderr, "Invalid input\n");
+        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 }
@@ -545,8 +541,7 @@ void b_handler(char *b_value) {
             input_fd = new_fd;
             output_fd = new_fd;
         }
-    }
-    if (strncmp(b_value, "TCPC", 4) == 0) {
+    } else if (strncmp(b_value, "TCPC", 4) == 0) {
         // open TCP client to connect to the server
         b_value += 4;  // skip the "TCPC" prefix
         char *server_ip, *server_port;
@@ -577,7 +572,7 @@ void b_handler(char *b_value) {
             output_fd = new_fd;
         }
     } else {
-        fprintf(stderr, "Invalid input\n");
+        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 }
@@ -692,6 +687,11 @@ int main(int argc, char *argv[]) {
         cleanup_and_exit(EXIT_FAILURE);
     }
 
+    if (b_value == NULL && i_value == NULL && o_value == NULL) {
+        fprintf(stderr, "At least one of -b, -i or -o must be provided\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
     if (i_value != NULL) {
         i_handler(i_value);
     }
@@ -732,7 +732,7 @@ int main(int argc, char *argv[]) {
         close(input_fd);
     }
 
-    if (output_fd != STDOUT_FILENO) {
+    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
         close(output_fd);
     }
     return 0;
