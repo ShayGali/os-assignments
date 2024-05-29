@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -18,7 +19,7 @@ void cleanup_and_exit(int exit_code) {
     if (input_fd != STDIN_FILENO) {
         close(input_fd);
     }
-    if (output_fd != STDOUT_FILENO) {
+    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
         close(output_fd);
     }
     exit(exit_code);
@@ -205,7 +206,7 @@ int udp_client(char *server_ip, char *server_port) {
             perror("error creating socket");
             continue;
         }
-        sendto(sockfd, "Hello", 5, 0, p->ai_addr, p->ai_addrlen);
+        sendto(sockfd, "Conn msg\n", 9, 0, p->ai_addr, p->ai_addrlen);
         // "connect" to the server - so if we use sendto/recvfrom, we don't need to specify the server address
         connect(sockfd, p->ai_addr, p->ai_addrlen);
 
@@ -222,6 +223,12 @@ int udp_client(char *server_ip, char *server_port) {
     return sockfd;
 }
 
+/**
+ * Parse the hostname and port from the given string
+ * @param value the string to parse in the format "<hostname>,<port>"
+ * @param hostname the pointer to store the hostname (return value)
+ * @param port the pointer to store the port (return value)
+ */
 void parse_hostname_port(char *value, char **hostname, char **port) {
     // split the string to get the server IP/hostname and port
     *hostname = strtok(value, ",");
@@ -288,74 +295,46 @@ void run_program(char *args_as_string) {
 }
 
 /**
- * Open a TCP server to listen to the given port
- * will change the input_fd to the new socket
- * @param i_value the port to listen to (in format "TCPS<port>")
+ * Update the input and output file descriptors
+ * @param value the value to update the file descriptors
+ * @param input_need_change 1 if the input file descriptor needs to be changed, 0 otherwise
+ * @param output_need_change 1 if the output file descriptor needs to be changed, 0 otherwise
  */
-void i_handler(char *i_value) {
-    // check if the prefix is TCPS
-    if (strncmp(i_value, "TCPS", 4) == 0) {
-        i_value += 4;  // skip the "TCPS" prefix
-        int port = atoi(i_value);
-        input_fd = open_tcp_server_and_accept(port);
-    } else if (strncmp(i_value, "UDPS", 4) == 0) {
-        i_value += 4;  // skip the "UDPS" prefix
-        int port = atoi(i_value);
-        input_fd = udp_server(port);
-    } else {
-        fprintf(stderr, "Invalid input\n");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
-}
-
-/**
- * Open a TCP client to the given server
- * @param o_value the server IP and port (in format "TCPC<server_ip>,<server_port>")
- * will change the output_fd to the new socket
- */
-void o_handler(char *o_value) {
-    // check if the prefix is TCPC
-    if (strncmp(o_value, "TCPC", 4) == 0) {
-        o_value += 4;  // skip the "TCPC" prefix
-
-        // get the server IP and port
-        char *server_ip, *server_port;
-        parse_hostname_port(o_value, &server_ip, &server_port);
-        output_fd = connect_to_tcp_server(server_ip, server_port);
-    } else if (strncmp(o_value, "UDPC", 4) == 0) {
-        o_value += 4;  // skip the "UDPC" prefix
-        // get the server IP and port
-        char *server_ip, *server_port;
-        parse_hostname_port(o_value, &server_ip, &server_port);
-        output_fd = udp_client(server_ip, server_port);
-    } else {
-        fprintf(stderr, "Invalid output\n");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
-}
-/**
- * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
- * will change the input_fd and output_fd to the new socket
- * @param b_value the port to listen to (in format "TCPS<port>")
- */
-void b_handler(char *b_value) {
-    if (strncmp(b_value, "TCPS", 4) == 0) {
+void input_output_updater(char *value, int input_need_change, int output_need_change) {
+    int new_fd;
+    if (strncmp(value, "TCPS", 4) == 0) {
         // open TCP server to listen to the port
-        b_value += 4;  // skip the "TCPS" prefix
-        int port = atoi(b_value);
-        int new_fd = open_tcp_server_and_accept(port);
-        input_fd = new_fd;
-        output_fd = new_fd;
-    } else if (strncmp(b_value, "UDPS", 4) == 0) {
+        value += 4;  // skip the "TCPS" prefix
+        int port = atoi(value);
+        new_fd = open_tcp_server_and_accept(port);
+
+    } else if (strncmp(value, "TCPC", 4) == 0) {
+        // open TCP client to connect to the server
+        value += 4;  // skip the "TCPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(value, &server_ip, &server_port);
+        new_fd = connect_to_tcp_server(server_ip, server_port);
+    } else if (strncmp(value, "UDPS", 4) == 0) {
         // open UDP server to listen to the port
-        b_value += 4;  // skip the "UDPS" prefix
-        int port = atoi(b_value);
-        int new_fd = udp_server(port);
-        input_fd = new_fd;
-        output_fd = new_fd;
+        value += 4;  // skip the "UDPS" prefix
+        int port = atoi(value);
+        new_fd = udp_server(port);
+    } else if (strncmp(value, "UDPC", 4) == 0) {
+        // open UDP client to connect to the server
+        value += 4;  // skip the "UDPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(value, &server_ip, &server_port);
+        new_fd = udp_client(server_ip, server_port);
     } else {
-        fprintf(stderr, "Invalid input\n");
+        printf("Invalid input/output value! need to start with TCPS, TCPC, UDPS or UDPC\n");
         cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    if (input_need_change) {
+        input_fd = new_fd;
+    }
+    if (output_need_change) {
+        output_fd = new_fd;
     }
 }
 
@@ -368,12 +347,8 @@ void chat_handler() {
     while (1) {
         FD_ZERO(&read_fds);
 
-        // check if we need to listen to the input_fd (only if it is not the stdin)
-        if (input_fd != STDIN_FILENO) {
-            FD_SET(input_fd, &read_fds);
-        }
-
-        // listen to the stdin
+        // add the file descriptors to the set
+        FD_SET(input_fd, &read_fds);  // we dont need to check if the input_fd == STDIN_FILENO, because it's a set
         FD_SET(STDIN_FILENO, &read_fds);
 
         // wait for any of the file descriptors to have data to read
@@ -465,20 +440,25 @@ int main(int argc, char *argv[]) {
 
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
-        fprintf(stderr, "Option -b cannot be used with -i or -o\n");
+        fprintf(stderr, "Error: Option -b cannot be used with -i or -o\n");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
+
+    if (b_value == NULL && i_value == NULL && o_value == NULL) {
+        fprintf(stderr, "Error: At least one of -b, -i or -o must be provided\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 
     if (i_value != NULL) {
-        i_handler(i_value);
+        input_output_updater(i_value, 1, 0);
     }
 
     if (o_value != NULL) {
-        o_handler(o_value);
+        input_output_updater(o_value, 0, 1);
     }
 
     if (b_value != NULL) {
-        b_handler(b_value);
+        input_output_updater(b_value, 1, 1);
     }
 
     if (e_value != NULL) {
@@ -503,13 +483,12 @@ int main(int argc, char *argv[]) {
         chat_handler();
     }
 
-    // TODO: check how to close the sockets
     // close the file descriptors
     if (input_fd != STDIN_FILENO) {
         close(input_fd);
     }
 
-    if (output_fd != STDOUT_FILENO) {
+    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
         close(output_fd);
     }
     return 0;
