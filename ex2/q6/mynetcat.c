@@ -425,17 +425,6 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
         char *server_ip, *server_port;
         parse_hostname_port(value, &server_ip, &server_port);
         new_fd = connect_to_tcp_server(server_ip, server_port);
-    } else if (strncmp(value, "UDSS", 4) == 0) {
-        // open Unix Domain Socket server on the given path
-        value += 4;  // skip the "UDSS" prefix
-        if (*value == 'D') {
-            value++;  // skip the type character
-            new_fd = uds_server_datagram(value);
-
-        } else if (*value == 'S') {
-            value++;  // skip the type character
-            new_fd = uds_server_stream(value);
-        }
     } else if (strncmp(value, "UDPS", 4) == 0) {
         // open UDP server to listen to the port
         value += 4;  // skip the "UDPS" prefix
@@ -447,6 +436,17 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
         char *server_ip, *server_port;
         parse_hostname_port(value, &server_ip, &server_port);
         new_fd = udp_client(server_ip, server_port);
+    } else if (strncmp(value, "UDSS", 4) == 0) {
+        // open Unix Domain Socket server on the given path
+        value += 4;  // skip the "UDSS" prefix
+        if (*value == 'D') {
+            value++;  // skip the type character
+            new_fd = uds_server_datagram(value);
+
+        } else if (*value == 'S') {
+            value++;  // skip the type character
+            new_fd = uds_server_stream(value);
+        }
     } else if (strncmp(value, "UDSC", 4) == 0) {
         // open Unix Domain Socket client to connect to the server
         value += 4;  // skip the "UDSC" prefix
@@ -616,13 +616,6 @@ int main(int argc, char *argv[]) {
         chat_handler();
     }
 
-    // close the file descriptors
-    if (input_fd != STDIN_FILENO) {
-        close(input_fd);
-    }
-
-    if (output_fd != STDOUT_FILENO && output_fd != input_fd) {
-        close(output_fd);
-    }
-    return 0;
+    // end the program
+    cleanup_and_exit(EXIT_SUCCESS);
 }
