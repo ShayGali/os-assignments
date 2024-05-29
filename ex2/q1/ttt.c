@@ -150,32 +150,35 @@ int main(int argc, char const *argv[]) {
 
     int is_won;
     for (int round = 0; round < 9; round++) {
+        print_board(board);
+        printf("\n");
         if (round % 2 == 0) {
             sleep(0.5);  // sleep for half a second so it's will be fun
             is_won = make_computer_move(board, &input);
             if (is_won) {
-                printf("\n\n\033[0;31mComputer won!\033[0m\n\n");
+                print_board(board);
+                printf("\n\n\033[0;31mWINNER WINNER CHICKEN DINNER!\nComputer won!\033[0m\n\n");
+                printf("MOON TRANSFER WILL START IN 3... 2... 1...\n");
+                fflush(stdout);
+                return 0;
             }
         } else {
             is_won = make_user_move(board);
             if (is_won) {
-                printf("\n\n\033[0;32mYou won!\033[0m\n\n");
+                print_board(board);
+
+                printf("\n\n\033[0;32mHuman kind dignity is saved!\nYou won!\033[0m\n\n");
+                fflush(stdout);
+                return 0;
             }
-        }
-
-        print_board(board);
-        printf("\n");
-
-        if (is_won) {
-            fflush(stdout);
-            return 0;
         }
     }
 
     // if we reached here, it's a draw
-    printf("\n\n\033[0;33mDRAW!\033[0m\n\n");
     print_board(board);
     printf("\n");
+    printf("\n\n\033[0;33mDRAW!\033[0m\n\n");
+    printf("EARTH IS STILL YOURS... (for now)\n");
     fflush(stdout);
     return 0;
 }
