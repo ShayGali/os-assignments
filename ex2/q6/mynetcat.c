@@ -410,7 +410,7 @@ void run_program(char *args_as_string) {
  * @param value the value to update the file descriptors
  * @param input_need_change 1 if the input file descriptor needs to be changed, 0 otherwise
  * @param output_need_change 1 if the output file descriptor needs to be changed, 0 otherwise
-*/
+ */
 void input_output_updater(char *value, int input_need_change, int output_need_change) {
     int new_fd;
     if (strncmp(value, "TCPS", 4) == 0) {
@@ -419,12 +419,12 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
         int port = atoi(value);
         new_fd = open_tcp_server_and_accept(port);
 
-    } else if (strncmp(value, "UDPS", 4) == 0) {
-        // open UDP server to listen to the port
-        value += 4;  // skip the "UDPS" prefix
-        int port = atoi(value);
-        new_fd = udp_server(port);
-
+    } else if (strncmp(value, "TCPC", 4) == 0) {
+        // open TCP client to connect to the server
+        value += 4;  // skip the "TCPC" prefix
+        char *server_ip, *server_port;
+        parse_hostname_port(value, &server_ip, &server_port);
+        new_fd = connect_to_tcp_server(server_ip, server_port);
     } else if (strncmp(value, "UDSS", 4) == 0) {
         // open Unix Domain Socket server on the given path
         value += 4;  // skip the "UDSS" prefix
@@ -436,20 +436,17 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
             value++;  // skip the type character
             new_fd = uds_server_stream(value);
         }
-    } else if (strncmp(value, "TCPC", 4) == 0) {
-        // open TCP client to connect to the server
-        value += 4;  // skip the "TCPC" prefix
-        char *server_ip, *server_port;
-        parse_hostname_port(value, &server_ip, &server_port);
-        new_fd = connect_to_tcp_server(server_ip, server_port);
-
+    } else if (strncmp(value, "UDPS", 4) == 0) {
+        // open UDP server to listen to the port
+        value += 4;  // skip the "UDPS" prefix
+        int port = atoi(value);
+        new_fd = udp_server(port);
     } else if (strncmp(value, "UDPC", 4) == 0) {
         // open UDP client to connect to the server
         value += 4;  // skip the "UDPC" prefix
         char *server_ip, *server_port;
         parse_hostname_port(value, &server_ip, &server_port);
         new_fd = udp_client(server_ip, server_port);
-
     } else if (strncmp(value, "UDSC", 4) == 0) {
         // open Unix Domain Socket client to connect to the server
         value += 4;  // skip the "UDSC" prefix
@@ -465,6 +462,7 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
             cleanup_and_exit(EXIT_FAILURE);
         }
     }
+
     if (input_need_change) {
         input_fd = new_fd;
     }
