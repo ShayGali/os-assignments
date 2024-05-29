@@ -3,10 +3,10 @@
 ./mync -e "./ttt 123456789" -b TCPS4269
 ./mync -e "./ttt 123456789" -b TCPClocalhost,6699
 ./mync -e "./ttt 123456789" -b UDPS4269
-./mync -e "./ttt 123456789" -b UDSSD/tmp/hoi
-./mync -e "./ttt 123456789" -b UDSSS/tmp/hoi
-./mync -e "./ttt 123456789" -b UDSCD/tmp/hoi
-./mync -e "./ttt 123456789" -b UDSCS/tmp/hoi
+./mync -e "./ttt 123456789" -b UDSSDhoi
+./mync -e "./ttt 123456789" -b UDSSShoi
+./mync -e "./ttt 123456789" -b UDSCDhoi
+./mync -e "./ttt 123456789" -b UDSCShoi
 ./mync -b TCPS4269
 
 
@@ -47,13 +47,13 @@ nc -u -l -p 6699
 nc -u localhost 4269
 
 # Unix domain socket stream server:
-nc -lU /tmp/hoi
+nc -lU hoi
 
 # Unix domain socket stream client:
-nc -U /tmp/hoi
+nc -U hoi
 
 # Unix domain socket datagram server:
-nc -U -l -u /tmp/hoi
+nc -U -l -u hoi
 
 # Unix domain socket datagram client:
-nc -U -u /tmp/hoi
+nc -U -u hoi

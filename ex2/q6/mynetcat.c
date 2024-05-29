@@ -456,11 +456,10 @@ void input_output_updater(char *value, int input_need_change, int output_need_ch
         } else if (*value == 'S') {
             value++;  // skip the type character
             new_fd = uds_client_stream(value);
-
-        } else {
-            fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
-            cleanup_and_exit(EXIT_FAILURE);
         }
+    } else {
+        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
+        cleanup_and_exit(EXIT_FAILURE);
     }
 
     if (input_need_change) {
@@ -528,7 +527,7 @@ void chat_handler() {
 }
 
 int main(int argc, char *argv[]) {
-    char *usage_msg = "Usage: %s -e <value> [-b <value>] [-i <value>] [-o <value>] [-t <value>]\n";
+    char *usage_msg = "Usage: %s [-e <value>] [-b <value>] [-i <value>] [-o <value>] [-t <value>]\n";
     if (argc < 2) {
         fprintf(stderr, usage_msg, argv[0]);
         cleanup_and_exit(EXIT_FAILURE);
@@ -574,11 +573,6 @@ int main(int argc, char *argv[]) {
     // check if -b is used with -i or -o (if so, print an error message and exit the program)
     if (b_value != NULL && (i_value != NULL || o_value != NULL)) {
         fprintf(stderr, "Error: Option -b cannot be used with -i or -o\n");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
-
-    if (b_value == NULL && i_value == NULL && o_value == NULL) {
-        fprintf(stderr, "Error: At least one of -b, -i or -o must be provided\n");
         cleanup_and_exit(EXIT_FAILURE);
     }
 
