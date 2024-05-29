@@ -47,7 +47,7 @@ nc -u -l -p 6699
 nc -u localhost 4269
 
 # Unix domain socket stream server:
-nc -U /tmp/hoi
+nc -lU /tmp/hoi
 
 # Unix domain socket stream client:
 nc -U /tmp/hoi

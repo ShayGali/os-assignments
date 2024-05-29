@@ -406,179 +406,70 @@ void run_program(char *args_as_string) {
 }
 
 /**
- * Open a TCP server to listen to the given port
- * will change the input_fd to the new socket
- * @param i_value the port to listen to (in format "TCPS<port>")
- */
-void i_handler(char *i_value) {
-    // check if the prefix is TCPS
-    if (strncmp(i_value, "TCPS", 4) == 0) {
-        i_value += 4;  // skip the "TCPS" prefix
-        int port = atoi(i_value);
-        input_fd = open_tcp_server_and_accept(port);
-    } else if (strncmp(i_value, "UDPS", 4) == 0) {
-        i_value += 4;  // skip the "UDPS" prefix
-        int port = atoi(i_value);
-        input_fd = udp_server(port);
-    } else if (strncmp(i_value, "UDSS", 4) == 0) {
-        // open Unix Domain Socket server on the given path
-        i_value += 4;  // skip the "UDSS" prefix
-        if (*i_value == 'D') {
-            i_value++;  // skip the type character
-            input_fd = uds_server_datagram(i_value);
-        } else if (*i_value == 'S') {
-            i_value++;  // skip the type character
-            input_fd = uds_server_stream(i_value);
-        } else {
-            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
-        }
-    } else if (strncmp(i_value, "TCPC", 4) == 0) {
-        i_value += 4;  // skip the "TCPC" prefix
-        char *server_ip, *server_port;
-        parse_hostname_port(i_value, &server_ip, &server_port);
-        input_fd = connect_to_tcp_server(server_ip, server_port);
-    } else if (strncmp(i_value, "UDPC", 4) == 0) {
-        i_value += 4;  // skip the "UDPC" prefix
-        char *server_ip, *server_port;
-        parse_hostname_port(i_value, &server_ip, &server_port);
-        input_fd = udp_client(server_ip, server_port);
-    } else if (strncmp(i_value, "UDSC", 4) == 0) {
-        i_value += 4;  // skip the "UDSC" prefix
-        if (*i_value == 'D') {
-            i_value++;  // skip the type character
-            input_fd = uds_client_datagram(i_value);
-        } else if (*i_value == 'S') {
-            i_value++;  // skip the type character
-            input_fd = uds_client_stream(i_value);
-        } else {
-            fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
-        }
-    } else {
-        fprintf(stderr, "Invalid input. Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
-}
-
-/**
- * Open a TCP client to the given server
- * @param o_value the server IP and port (in format "TCPC<server_ip>,<server_port>")
- * will change the output_fd to the new socket
- */
-void o_handler(char *o_value) {
-    // check if the prefix is TCPS
-    if (strncmp(o_value, "TCPS", 4) == 0) {
-        o_value += 4;  // skip the "TCPS" prefix
-        int port = atoi(o_value);
-        output_fd = open_tcp_server_and_accept(port);
-    } else if (strncmp(o_value, "UDPS", 4) == 0) {
-        o_value += 4;  // skip the "UDPS" prefix
-        int port = atoi(o_value);
-        output_fd = udp_server(port);
-    } else if (strncmp(o_value, "UDSS", 4) == 0) {
-        // open Unix Domain Socket server on the given path
-        o_value += 4;  // skip the "UDSS" prefix
-        if (*o_value == 'D') {
-            o_value++;  // skip the type character
-            output_fd = uds_server_datagram(o_value);
-        } else if (*o_value == 'S') {
-            o_value++;  // skip the type character
-            output_fd = uds_server_stream(o_value);
-        } else {
-            fprintf(stderr, "Invalid input. Expected UDSS<type(D/S)><socket_path>\n");
-        }
-    } else if (strncmp(o_value, "TCPC", 4) == 0) {
-        o_value += 4;  // skip the "TCPC" prefix
-        char *server_ip, *server_port;
-        parse_hostname_port(o_value, &server_ip, &server_port);
-        output_fd = connect_to_tcp_server(server_ip, server_port);
-    } else if (strncmp(o_value, "UDPC", 4) == 0) {
-        o_value += 4;  // skip the "UDPC" prefix
-        char *server_ip, *server_port;
-        parse_hostname_port(o_value, &server_ip, &server_port);
-        output_fd = udp_client(server_ip, server_port);
-    } else if (strncmp(o_value, "UDSC", 4) == 0) {
-        o_value += 4;  // skip the "UDSC" prefix
-        if (*o_value == 'D') {
-            o_value++;  // skip the type character
-            output_fd = uds_client_datagram(o_value);
-        } else if (*o_value == 'S') {
-            o_value++;  // skip the type character
-            output_fd = uds_client_stream(o_value);
-        } else {
-            fprintf(stderr, "Invalid input. Expected UDSC<type(D/S)><socket_path>\n");
-        }
-    } else {
-        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
-}
-/**
- * Open a TCP server to listen to the given port. The input and output file descriptors will be the same in the end of the function
- * will change the input_fd and output_fd to the new socket
- * @param b_value the port to listen to (in format "TCPS<port>")
- */
-void b_handler(char *b_value) {
-    if (strncmp(b_value, "TCPS", 4) == 0) {
+ * Update the input and output file descriptors
+ * @param value the value to update the file descriptors
+ * @param input_need_change 1 if the input file descriptor needs to be changed, 0 otherwise
+ * @param output_need_change 1 if the output file descriptor needs to be changed, 0 otherwise
+*/
+void input_output_updater(char *value, int input_need_change, int output_need_change) {
+    int new_fd;
+    if (strncmp(value, "TCPS", 4) == 0) {
         // open TCP server to listen to the port
-        b_value += 4;  // skip the "TCPS" prefix
-        int port = atoi(b_value);
-        int new_fd = open_tcp_server_and_accept(port);
-        input_fd = new_fd;
-        output_fd = new_fd;
-    } else if (strncmp(b_value, "UDPS", 4) == 0) {
+        value += 4;  // skip the "TCPS" prefix
+        int port = atoi(value);
+        new_fd = open_tcp_server_and_accept(port);
+
+    } else if (strncmp(value, "UDPS", 4) == 0) {
         // open UDP server to listen to the port
-        b_value += 4;  // skip the "UDPS" prefix
-        int port = atoi(b_value);
-        int new_fd = udp_server(port);
-        input_fd = new_fd;
-        output_fd = new_fd;
-    } else if (strncmp(b_value, "UDSS", 4) == 0) {
+        value += 4;  // skip the "UDPS" prefix
+        int port = atoi(value);
+        new_fd = udp_server(port);
+
+    } else if (strncmp(value, "UDSS", 4) == 0) {
         // open Unix Domain Socket server on the given path
-        b_value += 4;  // skip the "UDSS" prefix
-        if (*b_value == 'D') {
-            b_value++;  // skip the type character
-            int new_fd = uds_server_datagram(b_value);
-            input_fd = new_fd;
-            output_fd = new_fd;
-        } else if (*b_value == 'S') {
-            b_value++;  // skip the type character
-            int new_fd = uds_server_stream(b_value);
-            input_fd = new_fd;
-            output_fd = new_fd;
+        value += 4;  // skip the "UDSS" prefix
+        if (*value == 'D') {
+            value++;  // skip the type character
+            new_fd = uds_server_datagram(value);
+
+        } else if (*value == 'S') {
+            value++;  // skip the type character
+            new_fd = uds_server_stream(value);
         }
-    } else if (strncmp(b_value, "TCPC", 4) == 0) {
+    } else if (strncmp(value, "TCPC", 4) == 0) {
         // open TCP client to connect to the server
-        b_value += 4;  // skip the "TCPC" prefix
+        value += 4;  // skip the "TCPC" prefix
         char *server_ip, *server_port;
-        parse_hostname_port(b_value, &server_ip, &server_port);
-        int new_fd = connect_to_tcp_server(server_ip, server_port);
-        input_fd = new_fd;
-        output_fd = new_fd;
-    } else if (strncmp(b_value, "UDPC", 4) == 0) {
+        parse_hostname_port(value, &server_ip, &server_port);
+        new_fd = connect_to_tcp_server(server_ip, server_port);
+
+    } else if (strncmp(value, "UDPC", 4) == 0) {
         // open UDP client to connect to the server
-        b_value += 4;  // skip the "UDPC" prefix
+        value += 4;  // skip the "UDPC" prefix
         char *server_ip, *server_port;
-        parse_hostname_port(b_value, &server_ip, &server_port);
-        int new_fd = udp_client(server_ip, server_port);
-        input_fd = new_fd;
-        output_fd = new_fd;
-    } else if (strncmp(b_value, "UDSC", 4) == 0) {
+        parse_hostname_port(value, &server_ip, &server_port);
+        new_fd = udp_client(server_ip, server_port);
+
+    } else if (strncmp(value, "UDSC", 4) == 0) {
         // open Unix Domain Socket client to connect to the server
-        b_value += 4;  // skip the "UDSC" prefix
-        if (*b_value == 'D') {
-            b_value++;  // skip the type character
-            int new_fd = uds_client_datagram(b_value);
-            input_fd = new_fd;
-            output_fd = new_fd;
-        } else if (*b_value == 'S') {
-            b_value++;  // skip the type character
-            int new_fd = uds_client_stream(b_value);
-            input_fd = new_fd;
-            output_fd = new_fd;
+        value += 4;  // skip the "UDSC" prefix
+        if (*value == 'D') {
+            value++;  // skip the type character
+            new_fd = uds_client_datagram(value);
+        } else if (*value == 'S') {
+            value++;  // skip the type character
+            new_fd = uds_client_stream(value);
+
+        } else {
+            fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
+            cleanup_and_exit(EXIT_FAILURE);
         }
-    } else {
-        fprintf(stderr, "Invalid input - Expected TCPS<port> or UDPS<port> or UDSS<type(D/S)><socket_path> or TCPC<server_ip>,<server_port> or UDPC<server_ip>,<server_port> or UDSC<type(D/S)><socket_path>\n");
-        cleanup_and_exit(EXIT_FAILURE);
+    }
+    if (input_need_change) {
+        input_fd = new_fd;
+    }
+    if (output_need_change) {
+        output_fd = new_fd;
     }
 }
 
@@ -694,15 +585,15 @@ int main(int argc, char *argv[]) {
     }
 
     if (i_value != NULL) {
-        i_handler(i_value);
+        input_output_updater(i_value, 1, 0);
     }
 
     if (o_value != NULL) {
-        o_handler(o_value);
+        input_output_updater(o_value, 0, 1);
     }
 
     if (b_value != NULL) {
-        b_handler(b_value);
+        input_output_updater(b_value, 1, 1);
     }
 
     if (e_value != NULL) {
