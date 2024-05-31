@@ -93,6 +93,6 @@ nc -u localhost 4269
 ## code coverage
 we checked the code coverage of the code using gcov. most of the code is covered, except errors that are related to the socket library.
 
-[link to the code coverage report:](./q6/code%20covrage/mynetcat.c.gcov)
+[link to the code coverage report](./q6/code%20covrage/mynetcat.c.gcov)
 
 ![alt text](q6/code%20covrage/cose%20cov.png)
