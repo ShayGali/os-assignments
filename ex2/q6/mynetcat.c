@@ -289,11 +289,6 @@ int uds_server_datagram(char *socket_path) {
         cleanup_and_exit(EXIT_FAILURE);
     }
 
-    // call connect to save the client address
-    if (connect(sockfd, (struct sockaddr *)&client_addr, client_addr_len) == -1) {
-        perror("error connecting to client");
-        cleanup_and_exit(EXIT_FAILURE);
-    }
     return sockfd;
 }
 
@@ -330,6 +325,12 @@ int uds_client_datagram(char *socket_path) {
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, socket_path);
+
+    // connect the socket to the server
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("error connecting socket");
+        cleanup_and_exit(EXIT_FAILURE);
+    }
 
     return sockfd;
 }

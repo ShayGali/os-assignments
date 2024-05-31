@@ -1,4 +1,4 @@
-~ maximun subarray O(n) ~
+~ maximum subarray O(n) ~
 Flat profile:
 
 Each sample counts as 0.01 seconds.
@@ -14,7 +14,7 @@ Each sample counts as 0.01 seconds.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-~ maximun subarray O(n^2) ~
+~ maximum subarray O(n^2) ~
 
 Flat profile:
 
@@ -31,7 +31,7 @@ Each sample counts as 0.01 seconds.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-~ maximun subarray O(n^3) ~
+~ maximum subarray O(n^3) ~
 
 Flat profile:
 

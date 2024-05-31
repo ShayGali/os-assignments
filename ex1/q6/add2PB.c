@@ -42,10 +42,10 @@ int main(int argc, char* argv[]) {
             dup2(fd, STDOUT_FILENO);
             close(fd);
 
-            if (i == argc - 1)  // if it is the last argument, don't print the space
+            if (i == argc - 1)  // if it is the last argument, don't print the space, and print a newline character
                 execlp("echo", "echo", argv[i], NULL);
             else
-                execlp("echo", "echo", "-n", argv[i], "", NULL);
+                execlp("echo", "echo", "-n", argv[i], "", NULL); // -n: don't print the newline character. "": print a space
             perror("execlp");
             return 1;
         } else {
