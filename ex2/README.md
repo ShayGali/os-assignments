@@ -27,6 +27,7 @@ to use the socket we will send them after the flag, in this format:
 7. UDS datagram server: `UDSSD<PATH>` (go only with -i flag)
 8. UDS datagram client: `UDSCD<PATH>` (go only with -o flag)
 
+> NOTE: all datagram sockets (UDP and UDS datagram) will be wait for a dummy input from the client for accepting the connection, and then start the execution of the program.
 
 ## example usage:
 in all of the examples below, when we use the -e flag, we will execute the command a tik tak toe game, that we implemented in the [q1](./q1/ttt.c) folder.
@@ -90,9 +91,30 @@ nc -u localhost 4269
 ./mync -b TCPClocalhost,4269
 ```
 
+7. input from UDS server and output to UDS client (datagram)
+```bash
+#open the UDS server (the output will go here)
+socat UNIX-RECVFROM:hoi1.socket,fork -
+# open the UDS client for sending the output, and the UDS server for input
+./mync -e "./ttt 123456789" -o UDSCDhoi1.socket -i UDSSDhoi2.socket
+# open the UDS client for sending the input
+socat - UNIX-SENDTO:hoi2.socket
+```
+
+8. Unix domain socket stream server and client
+```bash
+# example 1
+    #open the UDS stream server
+    nc -lU hoi.socket
+    # open the UDS stream client
+    ./mync -e "./ttt 123456789" -b UDSCShoi.socket
+# example 2
+    ./mync -e "./ttt 123456789" -b UDSSShoi.socket
+    nc -U hoi.socket
+```
 ## code coverage
 we checked the code coverage of the code using gcov. most of the code is covered, except errors that are related to the socket library.
 
-[link to the code coverage report](./q6/code%20covrage/mynetcat.c.gcov)
+[link to the code coverage report](./q6/code%20coverage/mynetcat.c.gcov)
 
-![alt text](q6/code%20covrage/cose%20cov.png)
+![code coverage](./q6/code%20coverage/code_coverage.png)

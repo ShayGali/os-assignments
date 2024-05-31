@@ -109,7 +109,7 @@ nc -lU hoi.socket
 nc -U hoi.socket
 
 # Unix domain socket datagram server:
-nc -U -l -u hoi.socket
+socat UNIX-RECVFROM:hoi.socket,fork -
 
 # Unix domain socket datagram client:
 socat - UNIX-SENDTO:hoi.socket
