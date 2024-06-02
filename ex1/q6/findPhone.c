@@ -39,98 +39,90 @@ int main(int argc, char *argv[]) {
 
     char *name = argv[1];
 
-    // create the pipeline
-    int pipefd[2];  // pipefd[0] is the read end, pipefd[1] is the write end
+    int pipefd[2];                // pipefd[0] is the read end, pipefd[1] is the write end
+    int read_end = STDIN_FILENO;  // track on the read end of the pipe
+
+    int pid;
+
+    // create a pipeline - grep <name> phonebook.txt
+    if ((pipe(pipefd)) == -1) {
+        perror("pipe");
+        return 1;
+    }
+
+    // create a child process
+    if ((pid = fork()) == -1) {
+        perror("fork");
+        return 1;
+    }
+
+    if (pid == 0) {                      // child
+        dup2(pipefd[1], STDOUT_FILENO);  // redirect stdout to write to the pipe (to pass the output to the next command)
+        close(pipefd[0]);                // close the read end of the pipe
+
+        // execute the pipeline
+        execlp("grep", "grep", name, "phonebook.txt", NULL);
+        perror("execlp");
+        return 1;
+    } else {  // parent
+        // wait for the child to finish
+        wait(NULL);
+        close(pipefd[1]);      // close the write end of the pipe (we don't need it anymore)
+        read_end = pipefd[0];  // update the read end of the pipe to the read end of the previous command (so we can read the output of the previous command)
+    }
+
+    // create a pipeline - cut -d, -f 2
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        return 1;
+    }
+
+    if ((pid = fork()) == -1) {
+        perror("fork");
+        return 1;
+    }
+
+    if (pid == 0) {                      // child
+        dup2(read_end, STDIN_FILENO);    // redirect stdin to the read end of the pipe (to get the output of the previous command)
+        dup2(pipefd[1], STDOUT_FILENO);  // redirect stdout to write to the pipe (to pass the output to the next command)
+        close(pipefd[0]);
+
+        // execute the pipeline
+        execlp("cut", "cut", "-d,", "-f", "2", NULL);
+        perror("execlp");
+        return 1;
+    } else {  // parent
+        // wait for the child to finish
+        wait(NULL);
+        close(pipefd[1]);      // close the write end of the pipe (we don't need it anymore)
+        read_end = pipefd[0];  // update the read end of the pipe to the read end of the previous command (so we can read the output of the previous command)
+    }
 
     if (pipe(pipefd) == -1) {
         perror("pipe");
         return 1;
     }
 
-    // create the first child for the grep command
-    int pid1 = fork();
-    if (pid1 == -1) {
+    if ((pid = fork()) == -1) {
         perror("fork");
         return 1;
     }
 
-    if (pid1 == 0) {  // if we are in the child
-        // child 1
-        // copy the write end of the pipe to the stdout file descriptor (so everything written to stdout will go to the pipe)
-        dup2(pipefd[1], STDOUT_FILENO);
-
-        // close the original pipe file descriptors (we don't need them we have them in stdout)
+    if (pid == 0) {                    // child
+        dup2(read_end, STDIN_FILENO);  // redirect stdin to the read end of the pipe (to get the output of the previous command)
+        // we don't need to redirect stdout because we will print the output to the terminal
         close(pipefd[0]);
-        close(pipefd[1]);
 
-        // execute grep
-        execlp("grep", "grep", name, "phonebook.txt", NULL);
-
-        // if we reach this line, it means that execlp failed
-        perror("execlp");
-        return 1;
-    } else {
-        // parent
-        // close the write end of the pipe in the parent
-        close(pipefd[1]);
-        waitpid(pid1, NULL, 0);
-    }
-
-    // create the second child for the cut command
-    int pid2 = fork();
-    if (pid2 == -1) {
-        perror("fork");
-        return 1;
-    }
-
-    if (pid2 == 0) {
-        // child 2
-
-        // redirect stdin to the pipe
-        dup2(pipefd[0], STDIN_FILENO);
-        // close the original pipe file descriptors
-        close(pipefd[0]);
-        close(pipefd[1]);
-
-        // execute cut
-        execlp("cut", "cut", "-d,", "-f2", NULL);
-
-        // if we reach this line, it means that execlp failed
-        perror("execlp");
-        return 1;
-    } else {
-        // parent
-        waitpid(pid2, NULL, 0);
-    }
-
-    // create the third child for the sed command
-    int pid3 = fork();
-    if (pid3 == -1) {
-        perror("fork");
-        return 1;
-    }
-
-    if (pid3 == 0) {
-        // child 3
-        // redirect stdin to the pipe
-        dup2(pipefd[0], STDIN_FILENO);
-        // close the original pipe file descriptors
-        close(pipefd[0]);
-        close(pipefd[1]);
-
-        // execute sed
+        // execute the pipeline
         execlp("sed", "sed", "s/ //g", NULL);
-
-        // if we reach this line, it means that execlp failed
         perror("execlp");
         return 1;
-    }else{
-        // parent
-        waitpid(pid3, NULL, 0);
+    } else {  // parent
+        // wait for the child to finish
+        wait(NULL);
+        close(pipefd[1]);
+        read_end = pipefd[0];
     }
 
-    // close the pipe in the parent
-    close(pipefd[0]);
-    close(pipefd[1]);
     return 0;
 }
