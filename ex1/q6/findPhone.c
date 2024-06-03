@@ -32,7 +32,7 @@ explain the pipeline:
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        printf("Error: missing name argument\n");
+        printf("Error: invalid arguments\n");
         printf("Usage: %s <name>\n", argv[0]);
         return 1;
     }
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         close(pipefd[0]);
 
         // execute the pipeline
-        execlp("sed", "sed", "s/ //g", NULL);
+        execlp("sed", "sed", "s/ //g", NULL); // remove all spaces from the phone number, and print it to the terminal
         perror("execlp");
         return 1;
     } else {  // parent
