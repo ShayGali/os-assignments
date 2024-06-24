@@ -95,89 +95,47 @@ vector<vector<int>> kosaraju_adj_list(vector<vector<int>>& adj_list) {
     return components;
 }
 
-pair<int, int> get_pair_from_input() {
-    string line;
-    int a, b;
-    if (!getline(cin, line)) {
-        cerr << "Invalid input format" << endl;
-        exit(1);
-    }
-    if (sscanf(line.c_str(), "%d %d", &a, &b) != 2) {
-        cerr << "Invalid input format" << endl;
-        exit(1);
-    }
-    return make_pair(a, b);
-}
-
-void with_adj_matrix() {
-    pair<int, int> n_m = get_pair_from_input();
-    int n = n_m.first;
-    int m = n_m.second;
-
-    // init matrix n x n
+vector<vector<int>> gen_adj_matrix(int n, int seed = 0) {
+    srand(seed);
+    // init n x n matrix
     vector<vector<int>> adj_matrix(n, vector<int>(n, 0));
 
-    // read edges (u v\n means u -> v)
-    for (int i = 0; i < m; i++) {
-        pair<int, int> edge = get_pair_from_input();
-        // check if edge is valid
-        if (edge.first <= 0 || edge.first > n || edge.second <= 0 || edge.second > n) {
-            cerr << "Invalid edge" << endl;
-            exit(1);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i != j)
+                adj_matrix[i][j] = rand() % 2;
         }
-        adj_matrix[edge.first - 1][edge.second - 1] = 1;
     }
 
-    vector<vector<int>> components = kosaraju_adj_mat(adj_matrix);
-    for (int i = 0; i < components.size(); i++) {
-        cout << "Component " << i << ": ";
-        for (int j = 0; j < components[i].size(); j++) {
-            cout << (components[i][j] + 1) << " ";
-        }
-        cout << endl;
-    }
+    return adj_matrix;
 }
 
-void with_adj_list() {
-    pair<int, int> n_m = get_pair_from_input();
-    int n = n_m.first;
-    int m = n_m.second;
-
+vector<vector<int>> gen_adj_list(int n, int seed = 0) {
+    srand(seed);
     // init n lists
     vector<vector<int>> adj_list(n);
 
-    // read edges (u v\n means u -> v)
-    for (int i = 0; i < m; i++) {
-        pair<int, int> edge = get_pair_from_input();
-        // check if edge is valid
-        if (edge.first <= 0 || edge.first > n || edge.second <= 0 || edge.second > n) {
-            cerr << "Invalid edge" << endl;
-            exit(1);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i != j) {
+                adj_list[i].push_back(j);
+            }
         }
-        adj_list[edge.first - 1].push_back(edge.second - 1);
     }
 
-    vector<vector<int>> components = kosaraju_adj_list(adj_list);
-    for (int i = 0; i < components.size(); i++) {
-        cout << "Component " << i << ": ";
-        for (int j = 0; j < components[i].size(); j++) {
-            cout << (components[i][j] + 1) << " ";
-        }
-        cout << endl;
-    }
+    return adj_list;
 }
-int main() {
-    /*
-    5 5
-    1 2
-    2 3
-    3 1
-    3 4
-    4 5
-    */
 
-   cout << "with_adj_list\n";
-    with_adj_list();
-    cout << "with_adj_matrix\n";
-    with_adj_matrix();
+int main() {
+    int n = 10000;
+    cout << "gen_adj_list\n";
+    vector<vector<int>> adj_list = gen_adj_list(n);
+    cout << "gen_adj_matrix\n";
+    vector<vector<int>> adj_matrix = gen_adj_matrix(n);
+
+    cout << "kosaraju_adj_list\n";
+    kosaraju_adj_list(adj_list);
+
+    cout << "kosaraju_adj_mat\n";
+    kosaraju_adj_mat(adj_matrix);
 }
