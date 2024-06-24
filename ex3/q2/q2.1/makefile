@@ -2,7 +2,7 @@
 all: kosaraju
 
 run: kosaraju
-	./kosaraju < input.txt
+	./kosaraju
 	gprof kosaraju > output.txt
 
 kosaraju: kosaraju.cpp

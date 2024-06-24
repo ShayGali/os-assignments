@@ -1,7 +1,8 @@
-#include <iostream>
+
+#include "kosaraju.hpp"
+
+#include <stdexcept>
 #include <string>
-#include <vector>
-using namespace std;
 
 /**
  * dfs function starting from node
@@ -10,7 +11,6 @@ using namespace std;
  * @param visited - visited nodes
  * @param order - result order
  */
-
 void dfs(int node, vector<vector<int>>& adj_list, vector<bool>& visited, vector<int>& order) {
     visited[node] = true;
     for (int i = 0; i < adj_list[node].size(); i++) {
@@ -54,20 +54,6 @@ vector<vector<int>> kosaraju(vector<vector<int>>& adj_list) {
     return components;
 }
 
-pair<int, int> get_pair_from_input() {
-    string line;
-    int a, b;
-    if (!getline(cin, line)) {
-        cerr << "Invalid input format" << endl;
-        exit(1);
-    }
-    if (sscanf(line.c_str(), "%d %d", &a, &b) != 2) {
-        cerr << "Invalid input format" << endl;
-        exit(1);
-    }
-    return make_pair(a, b);
-}
-
 bool remove_edge(vector<vector<int>>& g, int i, int j) {
     // normalize i and j
     i -= 1;
@@ -107,6 +93,15 @@ bool add_edeg(vector<vector<int>>& g, int i, int j) {
     return true;
 }
 
+/*
+pair<int, int> get_pair_from_string(string input) {
+    int a, b;
+    if (sscanf(input, "%d %d", &a, &b) != 2) {
+        throw runtime_error("Invalid input format");
+        exit(1);
+    }
+    return make_pair(a, b);
+}
 vector<vector<int>> get_input_graph(int n, int m) {
     // init matrix n x n
     vector<vector<int>> g(n);
@@ -125,47 +120,5 @@ vector<vector<int>> get_input_graph(int n, int m) {
     }
 
     return g;
-}
-
-int main() {
-    vector<vector<int>> g;
-    string input;
-    pair<int, int> n_m;
-    while (true) {
-        // cout << "Enter command: ";
-        if (!(cin >> input)) {  // exit if EOF
-            break;
-        }
-
-        if (input == "Newgraph") {
-            n_m = get_pair_from_input();
-            g = get_input_graph(n_m.first, n_m.second);
-            cout << "New graph created" << endl;
-        } else if (input == "Kosaraju") {
-            vector<vector<int>> components = kosaraju(g);
-            for (int i = 0; i < components.size(); i++) {
-                cout << "Component " << i << ": ";
-                for (int j = 0; j < components[i].size(); j++) {
-                    cout << (components[i][j] + 1) << " ";
-                }
-                cout << endl;
-            }
-        } else if (input == "Newedge") {
-            n_m = get_pair_from_input();
-            if (add_edeg(g, n_m.first, n_m.second)) {
-                cout << "Edge added" << endl;
-            } else {
-                cout << "Invalid edge" << endl;
-            }
-        } else if (input == "Removeedge") {
-            n_m = get_pair_from_input();
-            if (remove_edge(g, n_m.first, n_m.second)) {
-                cout << "Edge removed" << endl;
-            } else {
-                cout << "Invalid edge" << endl;
-            }
-        } else {
-            cout << "Unsupported Command" << endl;
-        }
     }
-}
+    */
