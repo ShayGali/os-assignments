@@ -2,7 +2,6 @@
 #include "kosaraju.hpp"
 
 #include <stdexcept>
-#include <string>
 
 /**
  * dfs function starting from node
@@ -102,23 +101,4 @@ pair<int, int> get_pair_from_string(string input) {
     }
     return make_pair(a, b);
 }
-vector<vector<int>> get_input_graph(int n, int m) {
-    // init matrix n x n
-    vector<vector<int>> g(n);
-
-    // read edges (u v\n means u -> v)
-    int i = 0;
-    while (i < m) {
-        pair<int, int> edge = get_pair_from_input();
-        // check if edge is valid
-        if (edge.first <= 0 || edge.first > n || edge.second <= 0 || edge.second > n || edge.first == edge.second) {
-            cerr << "Invalid edge" << endl;
-        } else {
-            g[edge.first - 1].push_back(edge.second - 1);
-            i++;
-        }
-    }
-
-    return g;
-    }
-    */
+*/

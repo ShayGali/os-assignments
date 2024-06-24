@@ -9,9 +9,21 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define PORT "9034"   // port we're listening on
-#define BUF_SIZE 256  // 32 bytes
-#define MAX_CLIENT 10
+#include <iostream>
+#include <sstream>
+
+#include "kosaraju.hpp"
+
+using namespace std;
+
+// Define constants for buffer size, port, and max clients
+constexpr int BUF_SIZE = 1024;
+constexpr char PORT[] = "3490";
+constexpr int MAX_CLIENT = 10;
+
+string graph_handler(string input, int user_id);
+bool init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
@@ -50,7 +62,7 @@ int main(void) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
-        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+        cerr << "selectserver: " << gai_strerror(rv) << std::endl;
         exit(1);
     }
 
@@ -73,7 +85,7 @@ int main(void) {
 
     // if we got here, it means we didn't get bound
     if (p == NULL) {
-        fprintf(stderr, "selectserver: failed to bind\n");
+        cerr << "selectserver: failed to bind\n";
         exit(2);
     }
 
@@ -114,39 +126,79 @@ int main(void) {
                         if (newfd > fdmax) {     // keep track of the max
                             fdmax = newfd;
                         }
-                        printf(
-                            "selectserver: new connection from %s on "
-                            "socket %d\n",
-                            inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), newfd);
+
+                        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+                        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
                     }
                 } else {  // handle data from a client
                     if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
                         // got error or connection closed by client
                         if (nbytes == 0) {
                             // connection closed
-                            printf("selectserver: socket %d hung up\n", i);
+                            cout << "selectserver: socket " << i << " hung up" << std::endl;
                         } else {
                             perror("recv");
                         }
                         close(i);            // closing the socket of the client
                         FD_CLR(i, &master);  // remove from master set
-                    } else { // we got some data from a client
-                        // buf += graph_handler(buf);
-                        for (j = 0; j <= fdmax; j++) {
-                            // send to everyone!
-                            if (FD_ISSET(j, &master)) {
-                                // except the listener and ourselves
-                                if (j != listener && j != i) {
-                                    if (send(j, buf, nbytes, 0) == -1) {
-                                        perror("send");
-                                    }
-                                }
-                            }
-                        }
+                    } else {                 // we got some data from a client
+                        graph_handler(buf, i);
                     }
                 }  // END handle data from client
             }  // END got new incoming connection
         }  // END looping through file descriptors
     }  // END for(;;)--and you thought it would never end!
     return 0;
+}
+string graph_handler(string input, int user_id) {
+    string ans = "input: " + input;
+    vector<vector<int>> g;
+    string command;
+    pair<int, int> n_m;
+    istringstream iss(input);
+
+    iss >> command;
+    if (input == "Newgraph") {
+       if(init_graph(g, iss, user_id)){
+       ans += "Newgraph created";
+    }else{
+        exit(1);
+    }
+
+    } else if (input == "Kosaraju") {
+        vector<vector<int>> components = kosaraju(g);
+        for (int i = 0; i < components.size(); i++) {
+            cout << "Component " << i << ": ";
+            for (int j = 0; j < components[i].size(); j++) {
+                cout << (components[i][j] + 1) << " ";
+            }
+            cout << endl;
+        }
+    } else if (input == "Newedge") {
+        n_m = get_pair_from_input();
+        if (add_edeg(g, n_m.first, n_m.second)) {
+            cout << "Edge added" << endl;
+        } else {
+            cout << "Invalid edge" << endl;
+        }
+    } else if (input == "Removeedge") {
+        n_m = get_pair_from_input();
+        if (remove_edge(g, n_m.first, n_m.second)) {
+            cout << "Edge removed" << endl;
+        } else {
+            cout << "Invalid edge" << endl;
+        }
+    } else {
+        cout << "Unsupported Command" << endl;
+    }
+}
+
+bool init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
+    int n, m, i;
+    iss >> n >> m;
+    g = vector<vector<int>>(n); 
+    i=0;
+    while (i < m) {
+        
+    return true;
 }
