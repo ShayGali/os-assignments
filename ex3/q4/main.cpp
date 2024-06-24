@@ -45,6 +45,7 @@ int main(void) {
 
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
+    string ans;
 
     char remoteIP[INET6_ADDRSTRLEN];
 
@@ -142,7 +143,18 @@ int main(void) {
                         close(i);            // closing the socket of the client
                         FD_CLR(i, &master);  // remove from master set
                     } else {                 // we got some data from a client
-                        graph_handler(buf, i);
+                        ans= graph_handler(buf, i);
+                        for (j = 0; j <= fdmax; j++) {
+                            // send to everyone!
+                            if (FD_ISSET(j, &master)) {
+                                // except the listener
+                                if (j != listener) {
+                                    if (send(j, ans.c_str(), ans.size(), 0) == -1) {
+                                        perror("send");
+                                    }
+                                }
+                            }
+                        }
                     }
                 }  // END handle data from client
             }  // END got new incoming connection
@@ -151,54 +163,79 @@ int main(void) {
     return 0;
 }
 string graph_handler(string input, int user_id) {
-    string ans = "input: " + input;
+    string ans = "input: " + input + "\n";
     vector<vector<int>> g;
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
+    int u, v;
 
     iss >> command;
-    if (input == "Newgraph") {
+    if (command == "Newgraph") {
        if(init_graph(g, iss, user_id)){
-       ans += "Newgraph created";
+       ans = "Newgraph created";
     }else{
         exit(1);
     }
-
-    } else if (input == "Kosaraju") {
+    } else if (command == "Kosaraju") {
         vector<vector<int>> components = kosaraju(g);
         for (int i = 0; i < components.size(); i++) {
-            cout << "Component " << i << ": ";
+           ans += "Component " + to_string(i) + ": ";
             for (int j = 0; j < components[i].size(); j++) {
-                cout << (components[i][j] + 1) << " ";
+                ans += to_string(components[i][j] + 1) + " ";
             }
-            cout << endl;
+            ans += "\n";
         }
-    } else if (input == "Newedge") {
-        n_m = get_pair_from_input();
-        if (add_edeg(g, n_m.first, n_m.second)) {
-            cout << "Edge added" << endl;
-        } else {
-            cout << "Invalid edge" << endl;
+    } else if (command == "Newedge") {
+        if(!(iss >> u >> v)){
+            exit(1);
         }
-    } else if (input == "Removeedge") {
-        n_m = get_pair_from_input();
-        if (remove_edge(g, n_m.first, n_m.second)) {
-            cout << "Edge removed" << endl;
+        if (add_edeg(g,u,v)) {
+            ans += "Edge added";
         } else {
-            cout << "Invalid edge" << endl;
+            ans += "Invalid edge";
+        }
+    } else if (command == "Removeedge") {
+        if(!(iss >> u >> v)){
+            exit(1);
+        }
+        if (remove_edge(g,u,v)) {
+            ans += "Edge removed";
+        } else {
+            ans += "Invalid edge";
         }
     } else {
-        cout << "Unsupported Command" << endl;
+        ans += "Invalid command";
     }
+    if(ans.back() != '\n'){
+        ans += "\n";
+    }
+    return ans;
+
 }
 
 bool init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
-    int n, m, i;
+    char* buf;
+    string first, second;
+    int n, m, i, u, v, nbytes;
     iss >> n >> m;
     g = vector<vector<int>>(n); 
     i=0;
     while (i < m) {
-        
+        if(!(iss >>first >> second)){ // buffer is empty
+             if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
+                return false;
+             }
+                iss = istringstream(buf);
+                continue;
+        }
+        u = stoi(first);
+        v = stoi(second);
+        if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
+            return false;
+        }
+        g[u - 1].push_back(v - 1);
+        i++; 
+        }
     return true;
 }
