@@ -22,7 +22,7 @@ constexpr char PORT[] = "3490";
 constexpr int MAX_CLIENT = 10;
 
 string graph_handler(string input, int user_id);
-void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -169,7 +169,7 @@ int main(void) {
 vector<vector<int>> g;
 
 string graph_handler(string input, int user_id) {
-    string ans = "Got input: " + input + " from user " + to_string(user_id) + "\n";
+    string ans = "Got input: " + input + "\n";
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
@@ -178,8 +178,8 @@ string graph_handler(string input, int user_id) {
     iss >> command;
     if (command == "Newgraph") {
         try {
-            init_graph(g, iss, user_id);
-            ans += "Newgraph created";
+            ans += init_graph(g, iss, user_id);
+            ans += "\nNew graph created";
         } catch (exception &e) {
             ans += e.what();
         }
@@ -223,9 +223,9 @@ string graph_handler(string input, int user_id) {
     return ans;
 }
 
-void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
     char buf[BUF_SIZE] = {0};
-    string first, second;
+    string first, second, send_data;
     int n, m, i, u, v, nbytes;
     if (!(iss >> n >> m)) {
         throw invalid_argument("Invalid input - expected n and m");
@@ -237,7 +237,7 @@ void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
             if ((nbytes = recv(user_id, buf, sizeof(buf), 0)) <= 0) {
                 throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
             }
-
+            send_data += buf;
             iss = istringstream(buf);
             continue;
         }
@@ -254,4 +254,5 @@ void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
         i++;
     }
     g = temp;
+    return send_data;
 }
