@@ -22,7 +22,7 @@ constexpr char PORT[] = "3490";
 constexpr int MAX_CLIENT = 10;
 
 string graph_handler(string input, int user_id);
-bool init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
+void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -58,7 +58,7 @@ int main(void) {
     FD_ZERO(&read_fds);
 
     // get us a socket and bind it
-    memset(&hints, 0, sizeof hints);
+    memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
@@ -98,6 +98,8 @@ int main(void) {
         exit(3);
     }
 
+    cout << "selectserver: waiting for connections on port " << PORT << endl;
+
     // add the listener to the master set
     FD_SET(listener, &master);
 
@@ -117,7 +119,7 @@ int main(void) {
             if (FD_ISSET(i, &read_fds)) {  // we got one!!
                 if (i == listener) {
                     // handle new connections
-                    addrlen = sizeof remoteaddr;
+                    addrlen = sizeof(remoteaddr);
                     newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
 
                     if (newfd == -1) {
@@ -132,7 +134,7 @@ int main(void) {
                         cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
                     }
                 } else {  // handle data from a client
-                    if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
+                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
                         // got error or connection closed by client
                         if (nbytes == 0) {
                             // connection closed
@@ -143,12 +145,13 @@ int main(void) {
                         close(i);            // closing the socket of the client
                         FD_CLR(i, &master);  // remove from master set
                     } else {                 // we got some data from a client
-                        ans= graph_handler(buf, i);
+                        // add '\0' to the end of the buffer
+                        buf[nbytes] = '\0';
+                        ans = graph_handler(buf, i);
                         for (j = 0; j <= fdmax; j++) {
-                            // send to everyone!
+                            // send to  what client i do
                             if (FD_ISSET(j, &master)) {
-                                // except the listener
-                                if (j != listener) {
+                                if (j != listener) {  // dont send to listener (we send to client i also)
                                     if (send(j, ans.c_str(), ans.size(), 0) == -1) {
                                         perror("send");
                                     }
@@ -162,9 +165,11 @@ int main(void) {
     }  // END for(;;)--and you thought it would never end!
     return 0;
 }
+
+vector<vector<int>> g;
+
 string graph_handler(string input, int user_id) {
-    string ans = "input: " + input + "\n";
-    vector<vector<int>> g;
+    string ans = "Got input: " + input + " from user " + to_string(user_id) + "\n";
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
@@ -172,34 +177,36 @@ string graph_handler(string input, int user_id) {
 
     iss >> command;
     if (command == "Newgraph") {
-       if(init_graph(g, iss, user_id)){
-       ans = "Newgraph created";
-    }else{
-        exit(1);
-    }
+        try {
+            init_graph(g, iss, user_id);
+            ans += "Newgraph created";
+        } catch (exception &e) {
+            ans += e.what();
+        }
     } else if (command == "Kosaraju") {
         vector<vector<int>> components = kosaraju(g);
         for (int i = 0; i < components.size(); i++) {
-           ans += "Component " + to_string(i) + ": ";
+            ans += "Component " + to_string(i) + ": ";
             for (int j = 0; j < components[i].size(); j++) {
                 ans += to_string(components[i][j] + 1) + " ";
             }
             ans += "\n";
         }
     } else if (command == "Newedge") {
-        if(!(iss >> u >> v)){
+        // get u and v from the input
+        if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error
             exit(1);
         }
-        if (add_edeg(g,u,v)) {
+        if (add_edge(g, u, v)) {
             ans += "Edge added";
         } else {
             ans += "Invalid edge";
         }
     } else if (command == "Removeedge") {
-        if(!(iss >> u >> v)){
+        if (!(iss >> u >> v)) {
             exit(1);
         }
-        if (remove_edge(g,u,v)) {
+        if (remove_edge(g, u, v)) {
             ans += "Edge removed";
         } else {
             ans += "Invalid edge";
@@ -207,35 +214,44 @@ string graph_handler(string input, int user_id) {
     } else {
         ans += "Invalid command";
     }
-    if(ans.back() != '\n'){
+
+    // ad LF if needed
+    if (ans.back() != '\n') {
         ans += "\n";
     }
-    return ans;
 
+    return ans;
 }
 
-bool init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
-    char* buf;
+void init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
+    char buf[BUF_SIZE] = {0};
     string first, second;
     int n, m, i, u, v, nbytes;
-    iss >> n >> m;
-    g = vector<vector<int>>(n); 
-    i=0;
+    if (!(iss >> n >> m)) {
+        throw invalid_argument("Invalid input - expected n and m");
+    }
+    vector<vector<int>> temp(n);
+    i = 0;
     while (i < m) {
-        if(!(iss >>first >> second)){ // buffer is empty
-             if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
-                return false;
-             }
-                iss = istringstream(buf);
-                continue;
+        if (!(iss >> first >> second)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
+            if ((nbytes = recv(user_id, buf, sizeof(buf), 0)) <= 0) {
+                throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
+            }
+
+            iss = istringstream(buf);
+            continue;
         }
+        // convert string to int
         u = stoi(first);
         v = stoi(second);
+
+        // check if u and v are valid
         if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
-            return false;
+            throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(n) + " and u != v. Got: " + first + " " + second);
         }
-        g[u - 1].push_back(v - 1);
-        i++; 
-        }
-    return true;
+        // add edge to the graph
+        temp[u - 1].push_back(v - 1);
+        i++;
+    }
+    g = temp;
 }

@@ -86,7 +86,7 @@ bool remove_edge(vector<vector<int>>& g, int i, int j) {
     return false;
 }
 
-bool add_edeg(vector<vector<int>>& g, int i, int j) {
+bool add_edge(vector<vector<int>>& g, int i, int j) {
     if (i <= 0 || i > g.size() || j <= 0 || j > g.size()) {
         return false;
     }
@@ -152,7 +152,7 @@ int main() {
             }
         } else if (input == "Newedge") {
             n_m = get_pair_from_input();
-            if (add_edeg(g, n_m.first, n_m.second)) {
+            if (add_edge(g, n_m.first, n_m.second)) {
                 cout << "Edge added" << endl;
             } else {
                 cout << "Invalid edge" << endl;

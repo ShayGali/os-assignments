@@ -71,7 +71,7 @@ bool remove_edge(vector<vector<int>>& g, int i, int j) {
     return false;
 }
 
-bool add_edeg(vector<vector<int>>& g, int i, int j) {
+bool add_edge(vector<vector<int>>& g, int i, int j) {
     if (i <= 0 || i > g.size() || j <= 0 || j > g.size()) {
         return false;
     }
