@@ -7,6 +7,7 @@ typedef void *(*reactorFunc)(int fd);
 class reactor {
    private:
     map<int, reactorFunc> fd_to_func;
+    bool running;
 
    public:
     reactor();
