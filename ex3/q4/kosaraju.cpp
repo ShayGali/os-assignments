@@ -12,7 +12,7 @@
  */
 void dfs(int node, vector<vector<int>>& adj_list, vector<bool>& visited, vector<int>& order) {
     visited[node] = true;
-    for (int i = 0; i < adj_list[node].size(); i++) {
+    for (size_t i = 0; i < adj_list[node].size(); i++) {
         if (!visited[adj_list[node][i]]) {
             dfs(adj_list[node][i], adj_list, visited, order);
         }
@@ -25,7 +25,7 @@ vector<vector<int>> kosaraju(vector<vector<int>>& adj_list) {
     // first dfs
     vector<bool> visited(adj_list.size(), false);
     vector<int> order;
-    for (int i = 0; i < adj_list.size(); i++) {
+    for (size_t i = 0; i < adj_list.size(); i++) {
         if (!visited[i]) {
             dfs(i, adj_list, visited, order);
         }
@@ -33,8 +33,8 @@ vector<vector<int>> kosaraju(vector<vector<int>>& adj_list) {
 
     // transpose matrix
     vector<vector<int>> g_transposed(adj_list.size());
-    for (int i = 0; i < adj_list.size(); i++) {
-        for (int j = 0; j < adj_list[i].size(); j++) {
+    for (size_t i = 0; i < adj_list.size(); i++) {
+        for (size_t j = 0; j < adj_list[i].size(); j++) {
             g_transposed[adj_list[i][j]].push_back(i);
         }
     }
@@ -53,7 +53,7 @@ vector<vector<int>> kosaraju(vector<vector<int>>& adj_list) {
     return components;
 }
 
-bool remove_edge(vector<vector<int>>& g, int i, int j) {
+bool remove_edge(vector<vector<int>>& g, size_t i, size_t j) {
     // normalize i and j
     i -= 1;
     j -= 1;
@@ -61,8 +61,8 @@ bool remove_edge(vector<vector<int>>& g, int i, int j) {
         return false;
     }
     // check if i-->j
-    for (int k = 0; k < g[i].size(); k++) {
-        if (g[i][k] == j) {
+    for (size_t k = 0; k < g[i].size(); k++) {
+        if (g[i][k] == static_cast<int>(j)) {
             g[i].erase(g[i].begin() + k);
             return true;
         }
@@ -71,7 +71,7 @@ bool remove_edge(vector<vector<int>>& g, int i, int j) {
     return false;
 }
 
-bool add_edge(vector<vector<int>>& g, int i, int j) {
+bool add_edge(vector<vector<int>>& g, size_t i, size_t j) {
     if (i <= 0 || i > g.size() || j <= 0 || j > g.size()) {
         return false;
     }
@@ -81,8 +81,8 @@ bool add_edge(vector<vector<int>>& g, int i, int j) {
     j--;
 
     // check if i-->j
-    for (int k = 0; k < g[i].size(); k++) {
-        if (g[i][k] == j) {
+    for (size_t k = 0; k < g[i].size(); k++) {
+        if (g[i][k] == static_cast<int>(j)) {
             return false;
         }
     }

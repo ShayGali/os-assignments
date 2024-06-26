@@ -1,7 +1,6 @@
 #include "reactor.hpp"
 
 #include <iostream>
-#include <thread>
 
 using std::cout, std::endl;
 
@@ -33,11 +32,8 @@ int reactor::start() {
     }
 
     running = true;
-    std::thread t1([this] {
+    eventLoopThread = thread([this] {
         fd_set read_fds;     // temp file descriptor list for select()
-        char buf[BUF_SIZE];  // buffer for client data
-        int nbytes;
-
         // start the reactor
         while (running) {
             // init the fdmax
@@ -56,6 +52,12 @@ int reactor::start() {
                 FD_SET(pair.first, &read_fds);  // Add each file descriptor to fd_set
             }
 
+            // select the file descriptors
+            if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+                perror("select");
+                exit(EXIT_FAILURE);
+            }
+
             // run through the existing connections looking for data to read
             for (int i = 0; i <= fdmax; i++) {
                 if (FD_ISSET(i, &read_fds)) {
@@ -64,10 +66,25 @@ int reactor::start() {
             }
         }
     });
+
+
+    eventLoopThread.join();
+
     return 0;
 }
 
 int reactor::stop() {
+    if (!running) {
+        return -1;
+    }
     running = false;
     return 0;
+}
+
+//destructor
+reactor::~reactor() {
+    if (running) {
+        stop();
+    }
+    eventLoopThread.join();
 }
