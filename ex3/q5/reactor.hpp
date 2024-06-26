@@ -4,11 +4,12 @@
 using std::function;
 using std::map;
 
-typedef function<void(int)> reactorFunc;
+typedef function<void*(int)> reactorFunc;
 
 class reactor {
    private:
-    map < int, reactorFunc > fd_to_func;
+    bool running;
+    map<int, reactorFunc> fd_to_func;
 
    public:
     reactor();
