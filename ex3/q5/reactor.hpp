@@ -1,12 +1,14 @@
 #include <functional>
 #include <map>
+
+using std::function;
 using std::map;
 
 typedef function<void(int)> reactorFunc;
 
 class reactor {
    private:
-    map < int, f bool running;
+    map < int, reactorFunc > fd_to_func;
 
    public:
     reactor();
