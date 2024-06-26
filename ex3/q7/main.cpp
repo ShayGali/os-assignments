@@ -114,6 +114,8 @@ int main(void) {
          const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
                         cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
        threads.push_back(thread (client_handler, newfd));
+         
+         cout << "Number of threads: " << threads.size() << endl;
        
     }
     return 0;
@@ -126,9 +128,12 @@ void client_handler(int user_id) {
     while ((nbytes = recv(user_id, buf, sizeof(buf), 0)) > 0) {
         string input = buf;
         mtx.lock();
+        cout << "mutex locked by client " << user_id << endl;
         ans = graph_handler(input, user_id);
         mtx.unlock();
+        cout <<ans<< "mutex unlocked\n"<<endl;
         send(user_id, ans.c_str(), ans.size(), 0);
+        buf[0] = '\0'; 
     }
     close(user_id);
 }
@@ -136,7 +141,7 @@ void client_handler(int user_id) {
 vector<vector<int>> g;
 
 string graph_handler(string input, int user_id) {
-    string ans = "Got input: " + input + "\n";
+    string ans = "Got input: " + input ;
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
@@ -146,7 +151,7 @@ string graph_handler(string input, int user_id) {
     if (command == "Newgraph") {
         try {
             ans += init_graph(g, iss, user_id);
-            ans += "\nNew graph created";
+            ans += "New graph created";
         } catch (exception &e) {
             ans += e.what();
         }
@@ -186,7 +191,7 @@ string graph_handler(string input, int user_id) {
     if (ans.back() != '\n') {
         ans += "\n";
     }
-
+    iss.clear();
     return ans;
 }
 
