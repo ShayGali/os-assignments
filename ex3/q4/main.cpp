@@ -63,7 +63,7 @@ int main(void) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
-        cerr << "selectserver: " << gai_strerror(rv) << std::endl;
+        cerr << "selectserver: " << gai_strerror(rv) << endl;
         exit(1);
     }
 
