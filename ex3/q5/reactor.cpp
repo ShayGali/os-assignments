@@ -86,5 +86,4 @@ reactor::~reactor() {
     if (running) {
         stop();
     }
-    eventLoopThread.join();
 }
