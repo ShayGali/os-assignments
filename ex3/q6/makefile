@@ -18,6 +18,6 @@ kosaraju.o: kosaraju.cpp kosaraju.hpp
 	$(CCX) $(CXXFLAGS) -c kosaraju.cpp
 
 clean:
-	rm -f libactor.a *.o main
+	rm -f *.a *.o main
 
 .PHONY: all clean
