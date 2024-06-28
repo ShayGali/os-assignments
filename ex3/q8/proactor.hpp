@@ -8,9 +8,14 @@ using std::map;
 using std::mutex;
 using std::thread;
 
-typedef function<void*(int)> proactorFunc;
+typedef function<void*(int, mutex&)> proactorFunc;
 
 class proactor {
    private:
     mutex lock;
+    thread eventLoopThread;
+
+    public:
+    void start_proactor(int listener, proactorFunc client_handler);
+    void stop_proactor();
 };
