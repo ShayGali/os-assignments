@@ -8,10 +8,14 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <thread>
-#include <mutex>
+
+#include <functional>
 #include <iostream>
+#include <map>
+#include <mutex>
 #include <sstream>
+#include <string>
+#include <thread>
 
 #include "kosaraju.hpp"
 
@@ -22,11 +26,11 @@ constexpr int BUF_SIZE = 1024;
 constexpr char PORT[] = "3490";
 constexpr int MAX_CLIENT = 10;
 
-mutex mtx; // mutex for locking the g variable
+mutex mtx;  // mutex for locking the g variable
 
 string graph_handler(string input, int user_id);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
-void client_handler(int user_id);
+void client_handler(int user_id, function<void(void)> on_exit_callback);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -38,7 +42,6 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 int main(void) {
-  
     int listener;                        // listening socket descriptor
     int newfd;                           // newly accept()ed socket descriptor
     struct sockaddr_storage remoteaddr;  // client address
@@ -98,7 +101,7 @@ int main(void) {
 
     cout << "selectserver: waiting for connections on port " << PORT << endl;
 
-    vector<thread> threads;
+    map<int, thread> threads;
 
     // main loop
     for (;;) {
@@ -111,37 +114,44 @@ int main(void) {
             continue;
         }
 
-         const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-                        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
-       threads.push_back(thread (client_handler, newfd));
-         
-         cout << "Number of threads: " << threads.size() << endl;
-       
+        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
+
+        threads[newfd] = thread(client_handler, newfd, [&threads, newfd]() {
+            threads.erase(newfd);
+        });
+
+        threads[newfd].detach();
+
+        cout << "Number of threads: " << threads.size() << endl;
     }
     return 0;
 }
 
-void client_handler(int user_id) {
+void client_handler(int user_id, function<void(void)> on_exit_callback) {
     char buf[BUF_SIZE] = {0};
     int nbytes;
     string ans;
+    // while we receive data
     while ((nbytes = recv(user_id, buf, sizeof(buf), 0)) > 0) {
         string input = buf;
         mtx.lock();
-        cout << "mutex locked by client " << user_id << endl;
+        cout << "mutex locked by client" << user_id << endl;
         ans = graph_handler(input, user_id);
         mtx.unlock();
-        cout <<ans<< "mutex unlocked\n"<<endl;
+        cout << ans << "mutex unlocked\n " << endl;
         send(user_id, ans.c_str(), ans.size(), 0);
-        buf[0] = '\0'; 
+        buf[0] = '\0';
     }
+    on_exit_callback();
     close(user_id);
+    cout << "Connection closed for client " << user_id << endl;
 }
 
 vector<vector<int>> g;
 
 string graph_handler(string input, int user_id) {
-    string ans = "Got input: " + input ;
+    string ans = "Got input: " + input;
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
