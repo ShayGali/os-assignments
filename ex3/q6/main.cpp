@@ -86,12 +86,12 @@ int get_listener_fd() {
 }
 
 int main() {
-    reactor reactor;
+    reactor reactor_obj;
     int listener_fd = get_listener_fd();
 
     cout << "selectserver: waiting for connections on port " << PORT << endl;
-    // create the listener_fd, and add it to the reactor
-    reactor.add_fd_to_reactor(listener_fd, [&reactor](int fd) -> void * {
+    // create the listener_fd, and add it to the reactor_obj
+    reactor_obj.add_fd_to_reactor(listener_fd, [&reactor_obj](int fd) -> void * {
         char remoteIP[INET6_ADDRSTRLEN];
 
         int newfd;
@@ -108,8 +108,8 @@ int main() {
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), remoteIP, INET6_ADDRSTRLEN);
         cout << "selectserver: got connection from " << remoteIP << endl;
 
-        // add the newfd to the reactor, and set the callback function
-        reactor.add_fd_to_reactor(newfd, [&reactor](int fd) -> void * {
+        // add the newfd to the reactor_obj, and set the callback function
+        reactor_obj.add_fd_to_reactor(newfd, [&reactor_obj](int fd) -> void * {
             char buf[BUF_SIZE];  // buffer for client data
             int nbytes;
             nbytes = recv(fd, buf, sizeof(buf), 0);
@@ -120,7 +120,7 @@ int main() {
                     perror("recv");
                 }
                 close(fd);
-                reactor.remove_fd_from_reactor(fd);
+                reactor_obj.remove_fd_from_reactor(fd);
                 return nullptr;
             } else {
                 buf[nbytes] = '\0';
@@ -132,7 +132,7 @@ int main() {
         return nullptr;
     });
 
-    reactor.start();
+    reactor_obj.start();
 
     return 0;
 }
