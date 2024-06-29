@@ -18,4 +18,5 @@ class proactor {
     public:
     void start_proactor(int listener, proactorFunc client_handler);
     void stop_proactor();
+    ~proactor();
 };
