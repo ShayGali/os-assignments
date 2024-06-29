@@ -37,7 +37,7 @@ void proactor::start_proactor(int listener, proactorFunc client_handler) {
         }
     });
 
-    eventLoopThread.detach();
+    eventLoopThread.join();
 }
 
 void proactor::stop_proactor() {
