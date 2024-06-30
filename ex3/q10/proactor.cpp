@@ -46,6 +46,10 @@ void proactor::stop_proactor() {
     lock.unlock();
 }
 
+mutex& proactor::get_lock() {
+    return lock;
+}
+
 proactor::~proactor() {
     stop_proactor();
 }

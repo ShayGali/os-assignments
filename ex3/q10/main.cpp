@@ -8,7 +8,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <condition_variable>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <vector>
 
@@ -23,11 +25,29 @@ constexpr int MAX_CLIENT = 10;
 
 // Define the graph as a global variable
 vector<vector<int>> g;
+condition_variable more_than_50;
+bool more_than_50_flag = false;
 
-string graph_handler(string input, int user_id);
+string graph_handler(string input, int user_id, mutex &mtx);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
 void client_handler(int user_id, mutex &lock);
 
+void print_kosaraju_status(mutex &mtx) {
+    // wait until the more_than_50_flag is true, and then each time the kosaraju function is called we will print the status
+    unique_lock<mutex> lk(mtx);
+    more_than_50.wait(lk, [] { return more_than_50_flag; });
+    while (true) {
+        // check if the flag is still true
+        if (more_than_50_flag) {
+            cout << "More than 50% of the nodes are in the same component" << endl;
+        } else {
+            cout << "Less than 50% of the nodes are in the same component" << endl;
+        }
+
+        // wint until the next notification
+        more_than_50.wait(lk);
+    }
+}
 int get_listener_fd() {
     int listener_fd;
     int yes = 1;  // for setsockopt() SO_REUSEADDR, below
@@ -82,7 +102,14 @@ int get_listener_fd() {
 
 int main() {
     proactor proactor_obj;
+
     int listener_fd = get_listener_fd();
+
+    // create a theread that will print the status of the kosaraju (just when the condition variable is notified)
+    thread kosaraju_thread(print_kosaraju_status, ref(proactor_obj.get_lock()));
+
+    kosaraju_thread.detach();
+
     proactor_obj.start_proactor(listener_fd, client_handler);
 }
 
@@ -92,10 +119,11 @@ void client_handler(int user_id, mutex &mtx) {
     string ans;
     // while we receive data
     while ((nbytes = recv(user_id, buf, sizeof(buf), 0)) > 0) {
+        buf[nbytes] = '\0';  // add null terminator to the end of the buffer
         string input = buf;
         mtx.lock();
         cout << "mutex locked by client" << user_id << endl;
-        ans = graph_handler(input, user_id);
+        ans = graph_handler(input, user_id, mtx);
         mtx.unlock();
         cout << ans << "mutex unlocked\n " << endl;
         send(user_id, ans.c_str(), ans.size(), 0);
@@ -105,7 +133,7 @@ void client_handler(int user_id, mutex &mtx) {
     cout << "Connection closed for client " << user_id << endl;
 }
 
-string graph_handler(string input, int user_id) {
+string graph_handler(string input, int user_id, mutex &mtx) {
     string ans = "Got input: " + input;
     string command;
     pair<int, int> n_m;
@@ -122,7 +150,15 @@ string graph_handler(string input, int user_id) {
         }
     } else if (command == "Kosaraju") {
         vector<vector<int>> components = kosaraju(g);
+        size_t n = components.size();
+        more_than_50_flag = false;
         for (size_t i = 0; i < components.size(); i++) {
+            // if some component have more than 50% of the nodes wake up the thread that is waiting on the condition variable
+            if (components[i].size() > n / 2) {
+                more_than_50_flag = true;
+            }
+            more_than_50.notify_one();
+
             ans += "Component " + to_string(i) + ": ";
             for (size_t j = 0; j < components[i].size(); j++) {
                 ans += to_string(components[i][j] + 1) + " ";
