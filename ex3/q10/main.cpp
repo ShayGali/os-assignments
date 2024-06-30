@@ -32,6 +32,11 @@ string graph_handler(string input, int user_id, mutex &mtx);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
 void client_handler(int user_id, mutex &lock);
 
+/**
+ * this function is use by the thread that will print the status of the kosaraju function
+ * the thread will wait until the condition variable is notified and then print the status
+ * after he notify, he will wait again until the next notification (but now he will print the status always)
+ */
 void print_kosaraju_status(mutex &mtx) {
     // wait until the more_than_50_flag is true, and then each time the kosaraju function is called we will print the status
     unique_lock<mutex> lk(mtx);
@@ -39,9 +44,12 @@ void print_kosaraju_status(mutex &mtx) {
     while (true) {
         // check if the flag is still true
         if (more_than_50_flag) {
-            cout << "More than 50% of the nodes are in the same component" << endl;
+            cout << "\033[1;32m" << "At Least 50% of the graph belongs to the same scc\n\n"
+                 << "\033[0m";
         } else {
-            cout << "Less than 50% of the nodes are in the same component" << endl;
+            // print in yellow
+            cout << "\033[1;33m" << "At Least 50% of the graph no longer belongs to the same scc\n\n"
+                 << "\033[0m";
         }
 
         // wint until the next notification
@@ -157,6 +165,7 @@ string graph_handler(string input, int user_id, mutex &mtx) {
             if (components[i].size() > n / 2) {
                 more_than_50_flag = true;
             }
+            // notify the thread that is waiting on the condition variable (or wake up the thread if it is waiting after the first wake up)
             more_than_50.notify_one();
 
             ans += "Component " + to_string(i) + ": ";
@@ -168,7 +177,8 @@ string graph_handler(string input, int user_id, mutex &mtx) {
     } else if (command == "Newedge") {
         // get u and v from the input
         if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error
-            exit(1);
+            ans += "Invalid input - expected u and v\n";
+            return ans;
         }
         if (add_edge(g, u, v)) {
             ans += "Edge added";
@@ -177,7 +187,8 @@ string graph_handler(string input, int user_id, mutex &mtx) {
         }
     } else if (command == "Removeedge") {
         if (!(iss >> u >> v)) {
-            exit(1);
+            ans += "Invalid input - expected u and v\n";
+            return ans;
         }
         if (remove_edge(g, u, v)) {
             ans += "Edge removed";

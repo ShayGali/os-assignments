@@ -8,6 +8,11 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
@@ -30,7 +35,7 @@ void proactor::start_proactor(int listener, proactorFunc client_handler) {
 
             char remoteIP[INET6_ADDRSTRLEN];
             inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-            printf("server: got connection from %s\n", remoteIP);
+            cout << "server: got new connection" << endl;
 
             thread t(client_handler, newfd, std::ref(this->lock));
             t.detach();

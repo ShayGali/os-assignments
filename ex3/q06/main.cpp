@@ -163,7 +163,8 @@ string graph_handler(string input, int user_id) {
     } else if (command == "Newedge") {
         // get u and v from the input
         if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error
-            exit(1);
+            ans += "Invalid input - expected u and v\n";
+            return ans;
         }
         if (add_edge(g, u, v)) {
             ans += "Edge added";
@@ -172,7 +173,8 @@ string graph_handler(string input, int user_id) {
         }
     } else if (command == "Removeedge") {
         if (!(iss >> u >> v)) {
-            exit(1);
+            ans += "Invalid input - expected u and v\n";
+            return ans;
         }
         if (remove_edge(g, u, v)) {
             ans += "Edge removed";
