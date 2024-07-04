@@ -26,11 +26,14 @@ constexpr int BUF_SIZE = 1024;
 constexpr char PORT[] = "9034";
 constexpr int MAX_CLIENT = 10;
 
-mutex mtx;  // mutex for locking the g variable
+// global variable for the graph
+vector<vector<int>> g;
+// global mutex
+mutex mtx; 
 
 string graph_handler(string input, int user_fd);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd);
-void client_handler(int user_fd, function<void(void)> on_exit_callback);
+void client_handler(int user_fd, function<void(void)>& on_exit_callback);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -128,12 +131,13 @@ int main(void) {
     return 0;
 }
 
-void client_handler(int user_fd, function<void(void)> on_exit_callback) {
+void client_handler(int user_fd, function<void(void)>& on_exit_callback) {
     char buf[BUF_SIZE] = {0};
     int nbytes;
     string ans;
     // while we receive data
     while ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) > 0) {
+        buf[nbytes] = '\0'; // add null terminator to the end of the buffer
         string input = buf;
         mtx.lock();
         cout << "mutex locked by client" << user_fd << endl;
@@ -148,7 +152,6 @@ void client_handler(int user_fd, function<void(void)> on_exit_callback) {
     cout << "Connection closed for client " << user_fd << endl;
 }
 
-vector<vector<int>> g;
 
 string graph_handler(string input, int user_fd) {
     string ans = "Got input: " + input;
@@ -221,6 +224,7 @@ string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd) {
             if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
                 throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
             }
+            buf[nbytes] = '\0';
             send_data += buf;
             iss = istringstream(buf);
             continue;
