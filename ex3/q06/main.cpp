@@ -113,7 +113,7 @@ int main() {
             char buf[BUF_SIZE];  // buffer for client data
             int nbytes;
             nbytes = recv(fd, buf, sizeof(buf), 0);
-            if (nbytes <= 0) {
+            if (nbytes <= 0) {  // there was an error/ client disconnected - we remove the fd from the reactor and close the connection
                 if (nbytes == 0) {
                     cout << "selectserver: socket " << fd << " hung up" << endl;
                 } else {
@@ -122,11 +122,12 @@ int main() {
                 close(fd);
                 reactor_obj.remove_fd_from_reactor(fd);
                 return nullptr;
-            } else {
-                buf[nbytes] = '\0';
-                string res = graph_handler(buf, fd);
-                send(fd, res.c_str(), res.size(), 0);  // send the result back to the client
             }
+            
+            buf[nbytes] = '\0';
+            string res = graph_handler(buf, fd);
+            send(fd, res.c_str(), res.size(), 0);  // send the result back to the client
+
             return nullptr;
         });
         return nullptr;
