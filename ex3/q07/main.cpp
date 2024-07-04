@@ -28,9 +28,9 @@ constexpr int MAX_CLIENT = 10;
 
 mutex mtx;  // mutex for locking the g variable
 
-string graph_handler(string input, int user_id);
-string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
-void client_handler(int user_id, function<void(void)> on_exit_callback);
+string graph_handler(string input, int user_fd);
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd);
+void client_handler(int user_fd, function<void(void)> on_exit_callback);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -128,29 +128,29 @@ int main(void) {
     return 0;
 }
 
-void client_handler(int user_id, function<void(void)> on_exit_callback) {
+void client_handler(int user_fd, function<void(void)> on_exit_callback) {
     char buf[BUF_SIZE] = {0};
     int nbytes;
     string ans;
     // while we receive data
-    while ((nbytes = recv(user_id, buf, sizeof(buf), 0)) > 0) {
+    while ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) > 0) {
         string input = buf;
         mtx.lock();
-        cout << "mutex locked by client" << user_id << endl;
-        ans = graph_handler(input, user_id);
+        cout << "mutex locked by client" << user_fd << endl;
+        ans = graph_handler(input, user_fd);
         mtx.unlock();
         cout << ans << "mutex unlocked\n " << endl;
-        send(user_id, ans.c_str(), ans.size(), 0);
+        send(user_fd, ans.c_str(), ans.size(), 0);
         buf[0] = '\0';
     }
     on_exit_callback();
-    close(user_id);
-    cout << "Connection closed for client " << user_id << endl;
+    close(user_fd);
+    cout << "Connection closed for client " << user_fd << endl;
 }
 
 vector<vector<int>> g;
 
-string graph_handler(string input, int user_id) {
+string graph_handler(string input, int user_fd) {
     string ans = "Got input: " + input;
     string command;
     pair<int, int> n_m;
@@ -160,7 +160,7 @@ string graph_handler(string input, int user_id) {
     iss >> command;
     if (command == "Newgraph") {
         try {
-            ans += init_graph(g, iss, user_id);
+            ans += init_graph(g, iss, user_fd);
             ans += "New graph created";
         } catch (exception &e) {
             ans += e.what();
@@ -207,7 +207,7 @@ string graph_handler(string input, int user_id) {
     return ans;
 }
 
-string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd) {
     char buf[BUF_SIZE] = {0};
     string first, second, send_data;
     int n, m, i, u, v, nbytes;
@@ -218,7 +218,7 @@ string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
     i = 0;
     while (i < m) {
         if (!(iss >> first >> second)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-            if ((nbytes = recv(user_id, buf, sizeof(buf), 0)) <= 0) {
+            if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
                 throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
             }
             send_data += buf;

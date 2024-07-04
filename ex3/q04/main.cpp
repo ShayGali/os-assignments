@@ -21,8 +21,8 @@ constexpr int BUF_SIZE = 1024;
 constexpr char PORT[] = "9034";
 constexpr int MAX_CLIENT = 10;
 
-string graph_handler(string input, int user_id);
-string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
+string graph_handler(string input, int user_fd);
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -168,7 +168,7 @@ int main(void) {
 
 vector<vector<int>> g;
 
-string graph_handler(string input, int user_id) {
+string graph_handler(string input, int user_fd) {
     string ans = "Got input: " + input + "\n";
     string command;
     pair<int, int> n_m;
@@ -178,7 +178,7 @@ string graph_handler(string input, int user_id) {
     iss >> command;
     if (command == "Newgraph") {
         try {
-            ans += init_graph(g, iss, user_id);
+            ans += init_graph(g, iss, user_fd);
             ans += "\nNew graph created";
         } catch (exception &e) {
             ans += e.what();
@@ -225,7 +225,7 @@ string graph_handler(string input, int user_id) {
     return ans;
 }
 
-string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd) {
     char buf[BUF_SIZE] = {0};
     string first, second, send_data;
     int n, m, i, u, v, nbytes;
@@ -236,7 +236,7 @@ string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id) {
     i = 0;
     while (i < m) {
         if (!(iss >> first >> second)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-            if ((nbytes = recv(user_id, buf, sizeof(buf), 0)) <= 0) {
+            if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
                 throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
             }
             send_data += buf;
