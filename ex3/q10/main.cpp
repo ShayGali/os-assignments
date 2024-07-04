@@ -30,7 +30,7 @@ bool more_than_50_flag = false;
 
 string graph_handler(string input, int user_id, mutex &mtx);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
-void client_handler(int user_id, mutex &lock);
+void client_handler(int user_id, mutex &mtx);
 
 /**
  * this function is use by the thread that will print the status of the kosaraju function
@@ -47,7 +47,6 @@ void print_kosaraju_status(mutex &mtx) {
             cout << "\033[1;32m" << "At Least 50% of the graph belongs to the same scc\n\n"
                  << "\033[0m";
         } else {
-            // print in yellow
             cout << "\033[1;33m" << "At Least 50% of the graph no longer belongs to the same scc\n\n"
                  << "\033[0m";
         }
@@ -158,15 +157,13 @@ string graph_handler(string input, int user_id, mutex &mtx) {
         }
     } else if (command == "Kosaraju") {
         vector<vector<int>> components = kosaraju(g);
-        size_t n = components.size();
-        more_than_50_flag = false;
+        size_t n = g.size();        // number of nodes in the graph
+        more_than_50_flag = false;  // init the flag to false, change it to true if needed
         for (size_t i = 0; i < components.size(); i++) {
             // if some component have more than 50% of the nodes wake up the thread that is waiting on the condition variable
             if (components[i].size() > n / 2) {
                 more_than_50_flag = true;
             }
-            // notify the thread that is waiting on the condition variable (or wake up the thread if it is waiting after the first wake up)
-            more_than_50.notify_one();
 
             ans += "Component " + to_string(i) + ": ";
             for (size_t j = 0; j < components[i].size(); j++) {
@@ -174,6 +171,8 @@ string graph_handler(string input, int user_id, mutex &mtx) {
             }
             ans += "\n";
         }
+        // notify the thread that is waiting on the condition variable (or wake up the thread if it is waiting after the first wake up)
+        more_than_50.notify_one();
     } else if (command == "Newedge") {
         // get u and v from the input
         if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error

@@ -37,7 +37,7 @@ void proactor::start_proactor(int listener, proactorFunc client_handler) {
             inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
             cout << "server: got new connection" << endl;
 
-            thread t(client_handler, newfd, std::ref(this->lock));
+            thread t(client_handler, newfd, std::ref(this->mtx));
             t.detach();
         }
     });
@@ -48,7 +48,7 @@ void proactor::start_proactor(int listener, proactorFunc client_handler) {
 void proactor::stop_proactor() {
     // kill the event loop thread
     eventLoopThread.~thread();
-    lock.unlock();
+    mtx.unlock();
 }
 
 proactor::~proactor() {

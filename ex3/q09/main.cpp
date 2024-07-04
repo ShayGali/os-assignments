@@ -26,7 +26,7 @@ vector<vector<int>> g;
 
 string graph_handler(string input, int user_id);
 string init_graph(vector<vector<int>> &g, istringstream &iss, int user_id);
-void client_handler(int user_id, mutex &lock);
+void client_handler(int user_id, mutex &mtx);
 
 int get_listener_fd() {
     int listener_fd;

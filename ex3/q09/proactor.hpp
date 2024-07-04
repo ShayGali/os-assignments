@@ -12,7 +12,7 @@ typedef function<void(int, mutex&)> proactorFunc;
 
 class proactor {
    private:
-    mutex lock;
+    mutex mtx;
     thread eventLoopThread;
 
    public:
