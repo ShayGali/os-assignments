@@ -27,10 +27,10 @@ To use netcat, run `nc localhost 9034`.
 
 ### Client commands
 Now to clients can send the following commands:
-1. Newgraph n m: to create a new graph with n vertices and m edges. Will get an input of m pairs of integers (in the range of 1 to n) representing the edges. (you can send all of the command in one line - `Newgraph 2 1 1 2`).
-2. Newedge u v: to add an edge between u and v.
-3. Removeedge u v: to remove an edge between u and v.
-4. Kosaraju: to find the strongly connected components in the graph.
+1. `Newgraph n m`: to create a new graph with n vertices and m edges. Will get an input of m pairs of integers (in the range of 1 to n) representing the edges. (you can send all of the command in one line - `Newgraph 2 1 1 2`).
+2. `Newedge u v`: to add an edge between u and v.
+3. `Removeedge u v`: to remove an edge between u and v.
+4. `Kosaraju`: to find the strongly connected components in the graph.
 
 ### Example
 After opening a client & server, you can send the [following commands](./example%20input.txt) from the client:
