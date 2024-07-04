@@ -18,11 +18,11 @@ In this section, we will explain how to run the code for q10 (it will be similar
 1. to compile the code, run `make all` (in the `q10` directory).
 2. to run the code, run `./main`.
 
-Now a tcp server will be running on port `3490`.
+Now a tcp server will be running on port `9034`.
 
 To open a clients, you can use `telnet` or `nc` (netcat).
 
-To use netcat, run `nc localhost 3490`.
+To use netcat, run `nc localhost 9034`.
 
 
 ### Client commands
@@ -83,7 +83,7 @@ Component 2: 5
 
 The server will print the following:
 ```
-selectserver: waiting for connections on port 3490
+selectserver: waiting for connections on port 9034
 server: got new connection
 mutex locked by client4
 Got input: Newgraph 5 4

@@ -20,7 +20,7 @@
 using namespace std;
 
 constexpr int BUF_SIZE = 1024;
-constexpr char PORT[] = "3490";
+constexpr char PORT[] = "9034";
 constexpr int MAX_CLIENT = 10;
 
 // Define the graph as a global variable
