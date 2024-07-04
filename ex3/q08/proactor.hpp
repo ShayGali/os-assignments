@@ -8,7 +8,7 @@ using std::map;
 using std::mutex;
 using std::thread;
 
-typedef function<void*(int, mutex&)> proactorFunc;
+typedef  function<void*(int, mutex&)> proactorFunc;
 
 class proactor {
    private:

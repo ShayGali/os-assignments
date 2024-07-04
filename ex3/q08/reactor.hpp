@@ -6,7 +6,7 @@ using std::function;
 using std::map;
 using std::thread;
 
-typedef function<void*(int)> reactorFunc;
+typedef  function<void*(int)> reactorFunc;
 
 class reactor {
    private:

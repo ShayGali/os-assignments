@@ -42,7 +42,7 @@ void print_kosaraju_status(mutex &mtx) {
     unique_lock<mutex> lk(mtx);
     more_than_50.wait(lk, [] { return more_than_50_flag; });
     while (true) {
-        // check if the flag is still true
+        // print in green if the condition is true, and in yellow if the condition is false
         if (more_than_50_flag) {
             cout << "\033[1;32m" << "At Least 50% of the graph belongs to the same scc\n\n"
                  << "\033[0m";
