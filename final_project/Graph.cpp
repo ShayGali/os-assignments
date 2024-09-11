@@ -10,25 +10,25 @@ Graph::Graph(vector<vector<int>>& adjMat) {
     this->adjMat = adjMat;
 }
 
-void Graph::addEdge(int u, int v) {
+void Graph::addEdge(int u, int v, int weight) {
     if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
         throw std::invalid_argument("Invalid vertex index");
     }
-    adjMat[u][v] = 1;
+    adjMat[u][v] = weight;
 }
 
 void Graph::removeEdge(int u, int v) {
     if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
         throw std::invalid_argument("Invalid vertex index");
     }
-    adjMat[u][v] = 0;
+    adjMat[u][v] = NO_EDGE;
 }
 
 bool Graph::isEdge(int u, int v) const {
     if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
         throw std::invalid_argument("Invalid vertex index");
     }
-    return adjMat[u][v] == 1;
+    return adjMat[u][v] != NO_EDGE;
 }
 
 vector<int> Graph::getNeighbors(int u) const {
@@ -47,4 +47,11 @@ vector<int> Graph::getNeighbors(int u) const {
 
 const vector<vector<int>>& Graph::getAdjMat() const {
     return adjMat;
+}
+
+int Graph::getWeight(int u, int v) const {
+    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
+        throw std::invalid_argument("Invalid vertex index");
+    }
+    return adjMat[u][v];
 }
