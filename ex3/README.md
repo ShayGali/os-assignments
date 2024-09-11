@@ -7,7 +7,7 @@ We use c++ for this assignment.
 
 The assignment instructions can be found [here](./assignment%20instructions.pdf).
 
-Note, all q2 results can be found [here](./q02/README.md).
+> Note, all q2 results can be found [here](./q02/README.md).
 
 
 ## How to run
