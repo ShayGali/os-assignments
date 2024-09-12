@@ -55,3 +55,20 @@ int Graph::getWeight(int u, int v) const {
     }
     return adjMat[u][v];
 }
+
+int Graph::V() const {
+    return adjMat.size();
+}
+
+vector<Edge> Graph::getEdges() const {
+    vector<Edge> edges;
+    for (int i = 0; i < adjMat.size(); i++) {
+        for (int j = 0; j < adjMat.size(); j++) {
+            if (adjMat[i][j] != NO_EDGE) {
+                edges.push_back(std::make_tuple(i, j, adjMat[i][j]));
+            }
+        }
+    }
+
+    return edges;
+}
