@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 Graph::Graph(int n) {
-    adjMat = vector<vector<int>>(n, vector<int>(n, 0));
+    adjMat = vector<vector<int>>(n, vector<int>(n, NO_EDGE));
 }
 
 Graph::Graph(vector<vector<int>>& adjMat) {

@@ -1,0 +1,254 @@
+
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+#include "Graph.hpp"
+#include "client_commands.hpp"
+
+using namespace std;
+
+// global variable for the graph
+Graph g(0);
+
+// Define constants for buffer size, port, and max clients
+constexpr int BUF_SIZE = 1024;
+constexpr char PORT[] = "9034";
+constexpr int MAX_CLIENT = 10;
+
+string command_handler(string input, int user_fd);
+string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd);
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in *)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
+int open_server() {
+    int listener;  // listening socket descriptor
+    socklen_t addrlen;
+
+    int yes = 1;  // for setsockopt() SO_REUSEADDR, below
+    int i, j, rv;
+
+    struct addrinfo hints, *ai, *p;
+
+    // get us a socket and bind it
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
+        cerr << "selectserver: " << gai_strerror(rv) << endl;
+        exit(1);
+    }
+
+    for (p = ai; p != NULL; p = p->ai_next) {
+        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (listener < 0) {
+            continue;
+        }
+
+        // allow socket descriptor to be reuseable
+        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
+            close(listener);
+            continue;
+        }
+
+        break;
+    }
+
+    // if we got here, it means we didn't get bound
+    if (p == NULL) {
+        cerr << "selectserver: failed to bind\n";
+        exit(2);
+    }
+
+    freeaddrinfo(ai);  // all done with this
+
+    // listen
+    if (listen(listener, MAX_CLIENT) == -1) {
+        perror("listen");
+        exit(3);
+    }
+
+    cout << "selectserver: waiting for connections on port " << PORT << endl;
+
+    return listener;
+}
+
+int main(void) {
+    // variables for the server
+    struct sockaddr_storage remoteaddr;  // client address
+    socklen_t addrlen;
+    int newfd;  // newly accept()ed socket descriptor
+    char remoteIP[INET6_ADDRSTRLEN];
+    char buf[BUF_SIZE];  // buffer for client data
+    int nbytes;
+    string ans;
+
+    int listener = open_server();
+
+    fd_set master;    // master file descriptor list
+    fd_set read_fds;  // temp file descriptor list for select()
+    int fdmax;        // maximum file descriptor number
+
+    FD_ZERO(&master);  // clear the master and temp sets
+    FD_ZERO(&read_fds);
+
+    // add the listener to the master set
+    FD_SET(listener, &master);
+
+    // keep track of the biggest file descriptor
+    fdmax = listener;  // so far, it's this one
+
+    // main loop
+    for (;;) {
+        read_fds = master;  // copy it
+        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+            perror("select");
+            exit(4);
+        }
+
+        // run through the existing connections looking for data to read
+        for (int i = 0; i <= fdmax; i++) {
+            if (FD_ISSET(i, &read_fds)) {  // we got one!!
+                if (i == listener) {
+                    // handle new connections
+                    socklen_t addrlen = sizeof(remoteaddr);
+                    newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+
+                    if (newfd == -1) {
+                        perror("accept");
+                    } else {
+                        FD_SET(newfd, &master);  // add to master set
+                        if (newfd > fdmax) {     // keep track of the max
+                            fdmax = newfd;
+                        }
+
+                        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+                        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
+                    }
+                } else {  // handle data from a client
+                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
+                        // got error or connection closed by client
+                        if (nbytes == 0) {
+                            // connection closed
+                            cout << "selectserver: socket " << i << " hung up" << std::endl;
+                        } else {
+                            perror("recv");
+                        }
+                        close(i);            // closing the socket of the client
+                        FD_CLR(i, &master);  // remove from master set
+                    } else {                 // we got some data from a client
+                        // add '\0' to the end of the buffer
+                        buf[nbytes] = '\0';
+                        ans = command_handler(buf, i);
+                        // ans = graph_handler(buf, i);
+                        // TODO: send the answer to the client
+                    }
+                }  // END handle data from client
+            }  // END got new incoming connection
+        }  // END looping through file descriptors
+    }  // END for(;;)--and you thought it would never end!
+    return 0;
+}
+
+string command_handler(string input, int user_fd) {
+    string ans = "Got input: " + input;
+    string command;
+    pair<int, int> n_m;
+    istringstream iss(input);
+    int u, v;
+
+    iss >> command;
+    if (command == NEW_GRAPH) {
+        try {
+            ans += init_graph(iss, user_fd);
+            ans += "New graph created";
+        } catch (exception &e) {
+            ans += e.what();
+        }
+    } else if (command == ADD_EDGE) {
+        // get u and v from the input
+        if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error
+            ans += "Invalid input - expected u and v\n";
+            return ans;
+        }
+        if (add_edge(g, u, v)) {
+            ans += "Edge added";
+        } else {
+            ans += "Invalid edge";
+        }
+    } else if (command == REMOVE_EDGE) {
+        if (!(iss >> u >> v)) {
+            ans += "Invalid input - expected u and v\n";
+            return ans;
+        }
+        if (remove_edge(g, u, v)) {
+            ans += "Edge removed";
+        } else {
+            ans += "Invalid edge";
+        }
+    } else {
+        ans += "Invalid command";
+    }
+
+    // ad LF if needed
+    if (ans.back() != '\n') {
+        ans += "\n";
+    }
+    iss.clear();
+    return ans;
+}
+
+string init_graph(istringstream &iss, int user_fd) {
+    char buf[BUF_SIZE] = {0};
+    string first, second, send_data;
+    int n, m, i, u, v, nbytes;
+    if (!(iss >> n >> m)) {
+        throw invalid_argument("Invalid input - expected n and m");
+    }
+    Graph temp(n);
+    i = 0;
+    while (i < m) {
+        if (!(iss >> first >> second)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
+            if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
+                throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
+            }
+            send_data += buf;
+            iss = istringstream(buf);
+            continue;
+        }
+        // convert string to int
+        u = stoi(first);
+        v = stoi(second);
+
+        // check if u and v are valid
+        if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
+            throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(n) + " and u != v. Got: " + first + " " + second);
+        }
+        // add edge to the graph
+        temp.a
+        temp[u - 1].push_back(v - 1);
+        i++;
+    }
+    g = temp;
+    return send_data;
+}
