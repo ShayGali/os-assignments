@@ -5,6 +5,7 @@ class MST_Solver {
    private:
    public:
     virtual TreeOnGraph getMST(Graph &graph) const = 0;
+    virtual ~MST_Solver() {};  // Destructor
 };
 
 class Kruskal : public MST_Solver {

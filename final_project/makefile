@@ -11,7 +11,7 @@ run: $(PROG)
 	./$(PROG)
 
 clean:
-	rm -f $(PROG) *.o
+	rm -f $(PROG) *.o utils/*.o
 
 main: main.o Graph.o TreeOnGraph.o MST_factory.o MST_solver.o utils/union_find.o
 	$(CXX) $(CXXFLAGS) -o $@ $^

@@ -22,7 +22,7 @@ using namespace std;
 // global variable for the graph
 Graph g(0);
 MST_Factory mst_factory;
-TreeOnGraph mst;
+TreeOnGraph mst(g);
 
 // Define constants for buffer size, port, and max clients
 constexpr int BUF_SIZE = 1024;
@@ -43,10 +43,9 @@ void *get_in_addr(struct sockaddr *sa) {
 
 int open_server() {
     int listener;  // listening socket descriptor
-    socklen_t addrlen;
 
     int yes = 1;  // for setsockopt() SO_REUSEADDR, below
-    int i, j, rv;
+    int rv;
 
     struct addrinfo hints, *ai, *p;
 
@@ -99,8 +98,7 @@ int open_server() {
 int main(void) {
     // variables for the server
     struct sockaddr_storage remoteaddr;  // client address
-    socklen_t addrlen;
-    int newfd;  // newly accept()ed socket descriptor
+    int newfd;                           // newly accept()ed socket descriptor
     char remoteIP[INET6_ADDRSTRLEN];
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
@@ -176,7 +174,6 @@ int main(void) {
 string command_handler(string input, int user_fd) {
     string ans = "Got input: " + input;
     string command;
-    pair<int, int> n_m;
     istringstream iss(input);
     int u, v, w;
 
@@ -219,8 +216,8 @@ string command_handler(string input, int user_fd) {
         mst = solver->getMST(g);
         ans += mst.toString();
         delete solver;
-    } else if (command == MST_DATA_LF) {
-    } else if (command == MST_DATA_PIPELINE) {
+    } else if (command == MST_DATA_LF) {        // TODO: implement
+    } else if (command == MST_DATA_PIPELINE) {  // TODO: implement
     } else {
         ans += "Invalid command";
     }

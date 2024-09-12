@@ -23,7 +23,7 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
     Graph mst(graph.V());
 
     // add the edges to a vector of tuples (src, dest, weight)
-    const vector<Edge> edges = graph.getEdges();
+    vector<Edge> edges = graph.getEdges();
 
     // sort the edges by weight
     sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) {
@@ -62,7 +62,7 @@ TreeOnGraph Prim::getMST(Graph &graph) const {
     while (!pq.empty()) {
         tuple<int, int, int> *u = pq.top();
         pq.pop();
-        
+
         for (int v : graph.getNeighbors(std::get<0>(*u))) {
             // copy the pq to a vector
             vector<tuple<int, int, int> *> pq_copy;
