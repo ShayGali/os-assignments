@@ -14,12 +14,15 @@
 #include <vector>
 
 #include "Graph.hpp"
+#include "MST_factory.hpp"
 #include "client_commands.hpp"
 
 using namespace std;
 
 // global variable for the graph
 Graph g(0);
+MST_Factory mst_factory;
+TreeOnGraph mst;
 
 // Define constants for buffer size, port, and max clients
 constexpr int BUF_SIZE = 1024;
@@ -27,7 +30,7 @@ constexpr char PORT[] = "9034";
 constexpr int MAX_CLIENT = 10;
 
 string command_handler(string input, int user_fd);
-string init_graph(vector<vector<int>> &g, istringstream &iss, int user_fd);
+string init_graph(istringstream &iss, int user_fd);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -175,7 +178,7 @@ string command_handler(string input, int user_fd) {
     string command;
     pair<int, int> n_m;
     istringstream iss(input);
-    int u, v;
+    int u, v, w;
 
     iss >> command;
     if (command == NEW_GRAPH) {
@@ -187,25 +190,37 @@ string command_handler(string input, int user_fd) {
         }
     } else if (command == ADD_EDGE) {
         // get u and v from the input
-        if (!(iss >> u >> v)) {  // if the buffer is empty we throw an error
-            ans += "Invalid input - expected u and v\n";
+        if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
+            ans += "Invalid input - expected format: u v w\n";
             return ans;
         }
-        if (add_edge(g, u, v)) {
-            ans += "Edge added";
-        } else {
-            ans += "Invalid edge";
+        try {
+            g.addEdge(u - 1, v - 1, w);
+        } catch (exception &e) {
+            ans += e.what();
         }
     } else if (command == REMOVE_EDGE) {
         if (!(iss >> u >> v)) {
             ans += "Invalid input - expected u and v\n";
             return ans;
         }
-        if (remove_edge(g, u, v)) {
-            ans += "Edge removed";
-        } else {
-            ans += "Invalid edge";
+        try {
+            g.removeEdge(u - 1, v - 1);
+        } catch (exception &e) {
+            ans += e.what();
         }
+    } else if (command == MST_PRIME) {
+        MST_Solver *solver = mst_factory.createMSTSolver("Prim");
+        mst = solver->getMST(g);
+        ans += mst.toString();
+        delete solver;
+    } else if (command == MST_KRUSKAL) {
+        MST_Solver *solver = mst_factory.createMSTSolver("Kruskal");
+        mst = solver->getMST(g);
+        ans += mst.toString();
+        delete solver;
+    } else if (command == MST_DATA_LF) {
+    } else if (command == MST_DATA_PIPELINE) {
     } else {
         ans += "Invalid command";
     }
@@ -218,17 +233,21 @@ string command_handler(string input, int user_fd) {
     return ans;
 }
 
+/**
+ * @brief Initialize the graph with the given number of vertices and edges
+ * expected input: n m u1 v1 w1 u2 v2 w2 ... um vm wm
+ */
 string init_graph(istringstream &iss, int user_fd) {
     char buf[BUF_SIZE] = {0};
-    string first, second, send_data;
-    int n, m, i, u, v, nbytes;
+    string first, second, third, send_data;
+    int n, m, i, u, v, w, nbytes;
     if (!(iss >> n >> m)) {
         throw invalid_argument("Invalid input - expected n and m");
     }
     Graph temp(n);
     i = 0;
     while (i < m) {
-        if (!(iss >> first >> second)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
+        if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
             if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
                 throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
             }
@@ -239,16 +258,24 @@ string init_graph(istringstream &iss, int user_fd) {
         // convert string to int
         u = stoi(first);
         v = stoi(second);
+        w = stoi(third);
 
         // check if u and v are valid
         if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
             throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(n) + " and u != v. Got: " + first + " " + second);
         }
+
+        if (w <= 0) {
+            throw invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + third);
+        }
+
         // add edge to the graph
-        temp.a
-        temp[u - 1].push_back(v - 1);
+        temp.addEdge(u - 1, v - 1, w);
         i++;
     }
+
+    // if we reach here, we have a valid graph
     g = temp;
+
     return send_data;
 }

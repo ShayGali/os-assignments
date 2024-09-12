@@ -2,6 +2,10 @@
 
 #include <string>
 
-const std::string NEW_GRAPH = "Newgraph";
-const std::string ADD_EDGE = "Newedge";
-const std::string REMOVE_EDGE = "Removeedge";
+const std::string NEW_GRAPH = "New_graph";
+const std::string ADD_EDGE = "New_edge";
+const std::string REMOVE_EDGE = "Remove_edge";
+const std::string MST_PRIME = "MST_p";
+const std::string MST_KRUSKAL = "MST_k";
+const std::string MST_DATA_LF = "LF";
+const std::string MST_DATA_PIPELINE = "Pipeline";

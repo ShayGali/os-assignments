@@ -1,4 +1,4 @@
-#include "MST_Factory.hpp"
+#include "MST_factory.hpp"
 
 #include <stdexcept>
 
@@ -8,6 +8,6 @@ MST_Solver* MST_Factory::createMSTSolver(const string& solverType) {
     } else if (solverType == "Prim") {
         return new Prim();
     } else {
-        throw std::invalid_argument("Invalid solver type"); 
+        throw std::invalid_argument("Invalid solver type");
     }
 }
