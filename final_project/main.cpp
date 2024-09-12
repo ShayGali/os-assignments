@@ -204,6 +204,7 @@ string command_handler(string input, int user_fd) {
         }
         try {
             g.removeEdge(u - 1, v - 1);
+            g.removeEdge(v - 1, u - 1);
         } catch (exception &e) {
             ans += e.what();
         }
