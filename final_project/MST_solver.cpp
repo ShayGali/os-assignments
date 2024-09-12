@@ -1,5 +1,5 @@
 
-#include "MST_Solver.hpp"
+#include "MST_solver.hpp"
 
 #include <algorithm>
 #include <climits>
@@ -12,7 +12,6 @@
 
 using std::sort;
 using std::tuple;
-typedef tuple<int, int, int> Edge;
 
 /**
  * @brief Get the MST object with Kruskal's algorithm.
