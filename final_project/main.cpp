@@ -193,6 +193,7 @@ string command_handler(string input, int user_fd) {
         }
         try {
             g.addEdge(u - 1, v - 1, w);
+            g.addEdge(v - 1, u - 1, w);
         } catch (exception &e) {
             ans += e.what();
         }
@@ -268,6 +269,7 @@ string init_graph(istringstream &iss, int user_fd) {
 
         // add edge to the graph
         temp.addEdge(u - 1, v - 1, w);
+        temp.addEdge(v - 1, u - 1, w);
         i++;
     }
 
