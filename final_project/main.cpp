@@ -98,6 +98,26 @@ int open_server() {
     return listener;
 }
 
+
+void accept_connection(int listener, fd_set &master, int &fdmax) {
+    struct sockaddr_storage remoteaddr;  // client address
+    socklen_t addrlen = sizeof(remoteaddr);
+    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+
+    if (newfd == -1) {
+        perror("accept");
+    } else {
+        FD_SET(newfd, &master);  // add to master set
+        if (newfd > fdmax) {     // keep track of the max
+            fdmax = newfd;
+        }
+
+        char remoteIP[INET6_ADDRSTRLEN];
+        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
+    }
+}
+
 int main(void) {
     // variables for the server
     struct sockaddr_storage remoteaddr;  // client address
@@ -135,20 +155,7 @@ int main(void) {
             if (FD_ISSET(i, &read_fds)) {  // we got one!!
                 if (i == listener) {
                     // handle new connections
-                    socklen_t addrlen = sizeof(remoteaddr);
-                    newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
-
-                    if (newfd == -1) {
-                        perror("accept");
-                    } else {
-                        FD_SET(newfd, &master);  // add to master set
-                        if (newfd > fdmax) {     // keep track of the max
-                            fdmax = newfd;
-                        }
-
-                        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-                        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
-                    }
+                    accept_connection(listener, master, fdmax);
                 } else {  // handle data from a client
                     if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
                         // got error or connection closed by client
