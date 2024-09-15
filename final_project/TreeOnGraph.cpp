@@ -22,7 +22,7 @@ TreeOnGraph::TreeOnGraph(Graph &T) : mst(T)
         }
     }
 
-    // Cheking ot T that we have n-1 edges (this is an undirected graph, so we need to divide by 2)
+    // Cheking ot T that we have n-1 edges
     if (mst.getEdges().size() != n - 1)
     {
         throw std::runtime_error("The graph is not a tree");
