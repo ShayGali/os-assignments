@@ -28,7 +28,7 @@ TreeOnGraph.o: TreeOnGraph.cpp TreeOnGraph.hpp Graph.hpp
 MST_solver.o: MST_solver.cpp MST_solver.hpp Graph.hpp TreeOnGraph.hpp utils/union_find.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-MST_factory.o: MST_factory.cpp MST_factory.hpp MST_solver.hpp
+MST_factory.o: MST_factory.cpp MST_factory.hpp MST_solver.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 utils/union_find.o: utils/union_find.cpp utils/union_find.hpp
