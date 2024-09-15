@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -20,9 +21,11 @@
 using namespace std;
 
 // global variable for the graph
-Graph g(0);
+// Graph g(0);
+// TreeOnGraph mst(g);
 MST_Factory mst_factory;
-TreeOnGraph mst(g);
+
+map<int, pair<Graph, TreeOnGraph>> graph_per_user;
 
 // Define constants for buffer size, port, and max clients
 constexpr int BUF_SIZE = 1024;
@@ -95,6 +98,26 @@ int open_server() {
     return listener;
 }
 
+
+void accept_connection(int listener, fd_set &master, int &fdmax) {
+    struct sockaddr_storage remoteaddr;  // client address
+    socklen_t addrlen = sizeof(remoteaddr);
+    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+
+    if (newfd == -1) {
+        perror("accept");
+    } else {
+        FD_SET(newfd, &master);  // add to master set
+        if (newfd > fdmax) {     // keep track of the max
+            fdmax = newfd;
+        }
+
+        char remoteIP[INET6_ADDRSTRLEN];
+        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
+    }
+}
+
 int main(void) {
     // variables for the server
     struct sockaddr_storage remoteaddr;  // client address
@@ -132,20 +155,7 @@ int main(void) {
             if (FD_ISSET(i, &read_fds)) {  // we got one!!
                 if (i == listener) {
                     // handle new connections
-                    socklen_t addrlen = sizeof(remoteaddr);
-                    newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
-
-                    if (newfd == -1) {
-                        perror("accept");
-                    } else {
-                        FD_SET(newfd, &master);  // add to master set
-                        if (newfd > fdmax) {     // keep track of the max
-                            fdmax = newfd;
-                        }
-
-                        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-                        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
-                    }
+                    accept_connection(listener, master, fdmax);
                 } else {  // handle data from a client
                     if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
                         // got error or connection closed by client
@@ -179,6 +189,8 @@ string command_handler(string input, int user_fd) {
     istringstream iss(input);
     int u, v, w;
 
+    Graph &g = graph_per_user[user_fd].first;
+
     iss >> command;
     if (command == NEW_GRAPH) {
         try {
@@ -210,14 +222,10 @@ string command_handler(string input, int user_fd) {
         } catch (exception &e) {
             ans += e.what();
         }
-    } else if (command == MST_PRIME) {
-        MST_Solver *solver = mst_factory.createMSTSolver("Prim");
-        mst = solver->getMST(g);
-        ans += mst.toString();
-        delete solver;
-    } else if (command == MST_KRUSKAL) {
-        MST_Solver *solver = mst_factory.createMSTSolver("Kruskal");
-        mst = solver->getMST(g);
+    } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+        MST_Solver *solver = mst_factory.createMSTSolver(command);
+        TreeOnGraph mst = solver->getMST(g);
+        graph_per_user[user_fd].second = mst;
         ans += mst.toString();
         delete solver;
     } else if (command == MST_DATA_LF) {        // TODO: implement
@@ -277,7 +285,7 @@ string init_graph(istringstream &iss, int user_fd) {
     }
 
     // if we reach here, we have a valid graph
-    g = temp;
+    graph_per_user[user_fd].first = temp;
 
     return send_data;
 }
