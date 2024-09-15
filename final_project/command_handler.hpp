@@ -17,7 +17,7 @@ class CommandHandler {
     virtual string handle(string input, int user_fd) = 0;
     virtual void stop() = 0;
 
-   private:
+   protected:
     map<int, pair<Graph, TreeOnGraph>> &graph_per_user;
     MST_Factory &mst_factory;
 };
