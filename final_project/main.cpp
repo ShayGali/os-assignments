@@ -56,7 +56,7 @@ int open_server() {
     hints.ai_flags = AI_PASSIVE;
     if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
         cerr << "selectserver: " << gai_strerror(rv) << endl;
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     for (p = ai; p != NULL; p = p->ai_next) {
@@ -79,7 +79,7 @@ int open_server() {
     // if we got here, it means we didn't get bound
     if (p == NULL) {
         cerr << "selectserver: failed to bind\n";
-        exit(2);
+        exit(EXIT_FAILURE);
     }
 
     freeaddrinfo(ai);  // all done with this
@@ -87,7 +87,7 @@ int open_server() {
     // listen
     if (listen(listener, MAX_CLIENT) == -1) {
         perror("listen");
-        exit(3);
+        exit(EXIT_FAILURE);
     }
 
     cout << "selectserver: waiting for connections on port " << PORT << endl;
@@ -124,7 +124,7 @@ int main(void) {
         read_fds = master;  // copy it
         if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
             perror("select");
-            exit(4);
+            exit(EXIT_FAILURE);
         }
 
         // run through the existing connections looking for data to read
@@ -161,8 +161,10 @@ int main(void) {
                         // add '\0' to the end of the buffer
                         buf[nbytes] = '\0';
                         ans = command_handler(buf, i);
-                        // ans = graph_handler(buf, i);
                         // TODO: send the answer to the client
+                        if (send(i, ans.c_str(), ans.size(), 0) == -1) {
+                            perror("send");
+                        }
                     }
                 }  // END handle data from client
             }  // END got new incoming connection

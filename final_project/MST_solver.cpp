@@ -42,6 +42,7 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
 }
 
 TreeOnGraph Prim::getMST(Graph &graph) const {
+    // vector of tuples (vertex, key, parent)
     vector<tuple<int, int, int>> v_k_p;
     for (int i = 0; i < graph.V(); i++) {
         v_k_p.push_back({i, INT_MAX, -1});

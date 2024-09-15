@@ -1,4 +1,5 @@
 #include "TreeOnGraph.hpp"
+
 #include <climits>
 #include <queue>
 
@@ -6,6 +7,8 @@ using std::queue;
 
 TreeOnGraph::TreeOnGraph(Graph& T) : mst(T) {
     allPairs = getAllPairs();
+
+    // TODO: check if the graph is connected and have n-1 edges
 }
 
 int TreeOnGraph::getWeight() {
@@ -40,7 +43,7 @@ int TreeOnGraph::avgDist() {
             sum += allPairs[i][j];
         }
     }
-    return sum / (allPairs.size() * (allPairs.size() - 1) / 2);    
+    return sum / (allPairs.size() * (allPairs.size() - 1) / 2);
 }
 
 int TreeOnGraph::shortestDist() {
@@ -59,8 +62,8 @@ int TreeOnGraph::shortestDist() {
 string TreeOnGraph::toString() {
     string str = "";
     vector<vector<int>> mat = mst.getAdjMat();
-    for (int i = 0 ; i < mat.size() ; i++) {
-        for(int j = i + 1 ; j < mat.size() ; j++) {
+    for (int i = 0; i < mat.size(); i++) {
+        for (int j = i + 1; j < mat.size(); j++) {
             if (mat[i][j] != NO_EDGE) {
                 str += std::to_string(i) + " <-> " + std::to_string(j) + " , " + std::to_string(mat[i][j]) + "\n";
             }
@@ -100,4 +103,3 @@ vector<int> TreeOnGraph::getDistances(int root) {
     }
     return distances;
 }
-
