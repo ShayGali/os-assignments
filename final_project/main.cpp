@@ -228,9 +228,7 @@ string command_handler(string input, int user_fd) {
         graph_per_user[user_fd].second = mst;
         ans += mst.toString();
         delete solver;
-    } else if (command == MST_DATA_LF) {        // TODO: implement
-    } else if (command == MST_DATA_PIPELINE) {  // TODO: implement
-    } else {
+    }  else {
         ans += "Invalid command";
     }
 
