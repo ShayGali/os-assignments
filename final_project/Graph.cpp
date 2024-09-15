@@ -37,7 +37,7 @@ vector<int> Graph::getNeighbors(int u) const {
     }
     vector<int> neighbors;
     for (int i = 0; i < adjMat.size(); i++) {
-        if (adjMat[u][i] == 1) {
+        if (adjMat[u][i] != NO_EDGE) {
             neighbors.push_back(i);
         }
     }
