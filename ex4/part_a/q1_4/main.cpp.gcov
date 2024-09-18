@@ -1,0 +1,84 @@
+        -:    0:Source:main.cpp
+        -:    0:Graph:main.gcno
+        -:    0:Data:main.gcda
+        -:    0:Runs:6
+        -:    1:#include <unistd.h>
+        -:    2:
+        -:    3:#include <cstdlib>
+        -:    4:#include <iostream>
+        -:    5:
+        -:    6:#include "EulerCircle.hpp"
+        -:    7:
+        -:    8:/**
+        -:    9: * @brief Generate a random undirected graph with the given number of vertices and edges.
+        -:   10: *
+        -:   11: * @param v The number of vertices in the graph.
+        -:   12: * @param e The number of edges in the graph.
+        -:   13: * @param seed The seed for the random number generator.
+        -:   14: *
+        -:   15: * @return The generated graph.
+        -:   16: */
+        2:   17:Graph generateRandomGraph(int n, int e, int seed) {
+        2:   18:    Graph g(n);
+        -:   19:
+        2:   20:    srand(seed);
+        -:   21:
+        2:   22:    int count = 0;
+      123:   23:    while (count < e) {
+      121:   24:        int u = rand() % n;
+      121:   25:        int v = rand() % n;
+      121:   26:        if (u != v && g.isEdge(u, v) == false) {
+      103:   27:            g.addEdge(u, v);
+      103:   28:            count++;
+        -:   29:        }
+        -:   30:    }
+        -:   31:
+        2:   32:    return g;
+        -:   33:}
+        -:   34:
+        -:   35:// Driver program to test above function
+        6:   36:int main(int argc, char *argv[]) {
+        -:   37:    int opt;
+        -:   38:
+        6:   39:    int v = -1, e = -1, seed = -1;
+        -:   40:
+        -:   41:    // parse the arguments
+       18:   42:    while ((opt = getopt(argc, argv, "v:e:s:")) != -1) {
+       13:   43:        switch (opt) {
+        4:   44:            case 'v':
+        4:   45:                v = std::atoi(optarg);
+        4:   46:                break;
+        4:   47:            case 'e':
+        4:   48:                e = std::atoi(optarg);
+        4:   49:                break;
+        4:   50:            case 's':
+        4:   51:                seed = std::atoi(optarg);
+        4:   52:                break;
+        1:   53:            default: /* '?' */
+        1:   54:                std::cerr << "Usage: " << argv[0] << " -v num_vertices -e num_edges -s seed\n";
+        1:   55:                exit(EXIT_FAILURE);
+        -:   56:        }
+        -:   57:    }
+        -:   58:
+        5:   59:    if (v == -1 || e == -1 || seed == -1) {
+        1:   60:        std::cerr << "Usage: " << argv[0] << " -v num_vertices -e num_edges -s seed\n";
+        1:   61:        exit(EXIT_FAILURE);
+        -:   62:    }
+        -:   63:
+        4:   64:    if (v < 0 || e < 0 || seed < 0) {
+        1:   65:        std::cerr << "All arguments must be positive integers\n";
+        1:   66:        exit(EXIT_FAILURE);
+        -:   67:    }
+        -:   68:
+        -:   69:    // check if we can have `e` edges in a graph with `v` vertices
+        3:   70:    if (e > (v * (v - 1)) / 2) {
+        1:   71:        std::cerr << "The number of edges cannot be more than " << (v * (v - 1)) / 2 << " for " << v << " vertices\n";
+        1:   72:        exit(EXIT_FAILURE);
+        -:   73:    }
+        -:   74:
+        2:   75:    Graph g = generateRandomGraph(v, e, seed);
+        -:   76:
+        2:   77:    g.printEulerCycle();
+        2:   78:    cout << endl;
+        2:   79:    return 0;
+        -:   80:}

@@ -1,0 +1,47 @@
+        -:    0:Source:EulerCircle.hpp
+        -:    0:Graph:main.gcno
+        -:    0:Data:main.gcda
+        -:    0:Runs:6
+        -:    1:#pragma once
+        -:    2:#include <algorithm>
+        -:    3:#include <iostream>
+        -:    4:#include <vector>
+        -:    5:
+        -:    6:using std::cout;
+        -:    7:using std::endl;
+        -:    8:using std::vector;
+        -:    9:constexpr int NO_EDGE = 0;
+        -:   10:
+        -:   11:// A class that represents an undirected graph
+        -:   12:class Graph {
+        -:   13:    vector<vector<int>> adjMat;  // Adjacency matrix
+        -:   14:   public:
+        -:   15:    // Constructor and destructor
+        2:   16:    Graph(int n) {
+        2:   17:        adjMat = vector<vector<int>>(n, vector<int>(n, NO_EDGE));
+        2:   18:    }
+        -:   19:    // functions to add and remove edge
+      104:   20:    void addEdge(int u, int v) {
+      104:   21:        adjMat[u][v] = 1;
+      104:   22:        adjMat[v][u] = 1;
+      104:   23:    }
+        -:   24:
+        -:   25:    void rmvEdge(int u, int v);
+        -:   26:
+      112:   27:    bool isEdge(int u, int v) {
+      112:   28:        return adjMat[u][v] != NO_EDGE;
+        -:   29:    }
+        -:   30:
+        -:   31:    // Methods to print Eulerian tour
+        -:   32:    bool isEulerian();
+        -:   33:    void printEulerCycle();
+        -:   34:    void printEulerUtil(int s);
+        -:   35:
+        -:   36:    // This function returns count of vertices reachable
+        -:   37:    // from v. It does DFS
+        -:   38:    int DFSCount(int v, bool visited[]);
+        -:   39:
+        -:   40:    // Utility function to check if edge u-v is a valid next
+        -:   41:    // edge in Eulerian trail or circuit
+        -:   42:    bool isValidNextEdge(int u, int v);
+        -:   43:};
