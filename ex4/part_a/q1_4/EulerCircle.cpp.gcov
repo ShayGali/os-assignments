@@ -1,0 +1,121 @@
+        -:    0:Source:EulerCircle.cpp
+        -:    0:Graph:EulerCircle.gcno
+        -:    0:Data:EulerCircle.gcda
+        -:    0:Runs:6
+        -:    1:/*
+        -:    2:This code is base on the code from https://www.geeksforgeeks.org/fleurys-algorithm-for-printing-eulerian-path/
+        -:    3:*/
+        -:    4:#include "EulerCircle.hpp"
+        -:    5:
+        -:    6:#include <string.h>
+        -:    7:
+        -:    8:/**
+        -:    9: * @brief Check if the given graph is Eulerian (i.e., it has an Eulerian circuit).
+        -:   10: *
+        -:   11: * @param graph The graph to check.
+        -:   12: * @return true If the graph is Eulerian.
+        -:   13: */
+        2:   14:bool Graph::isEulerian() {
+        -:   15:    // Check if each vertex has even degree
+        5:   16:    for (size_t i = 0; i < adjMat.size(); i++) {
+        -:   17:        // Count the number of edges incident on the vertex
+        4:   18:        int degree = 0;
+       63:   19:        for (size_t j = 0; j < adjMat.size(); j++) {
+       59:   20:            if (adjMat[i][j] != NO_EDGE)
+       11:   21:                degree += 1;
+        -:   22:        }
+        -:   23:        // If the degree is odd, the graph is not Eulerian
+        4:   24:        if (degree % 2 != 0) {
+        1:   25:            return false;
+        -:   26:        }
+        -:   27:    }
+        1:   28:    return true;
+        -:   29:}
+        -:   30:
+        2:   31:void Graph::printEulerCycle() {
+        2:   32:    if (isEulerian()) {
+        1:   33:        printEulerUtil(0);
+        -:   34:    } else {
+        1:   35:        cout << "Graph is not Eulerian" << endl;
+        -:   36:    }
+        2:   37:}
+        -:   38:
+        -:   39:// Print Euler tour starting from vertex u
+        4:   40:void Graph::printEulerUtil(int u) {
+        4:   41:    int n = adjMat.size();
+        -:   42:    // Recur for all the vertices adjacent to this vertex
+       16:   43:    for (int v = 0; v != n; ++v) {
+        -:   44:        // If edge u-v is not removed and it's a a valid
+        -:   45:        // next edge
+       12:   46:        if (adjMat[u][v] != NO_EDGE && isValidNextEdge(u, v)) {
+        3:   47:            cout << u << "-" << v << " ";
+        3:   48:            rmvEdge(u, v);
+        3:   49:            printEulerUtil(v);
+        -:   50:        }
+        -:   51:    }
+        4:   52:}
+        -:   53:
+        -:   54:// The function to check if edge u-v can be considered as
+        -:   55:// next edge in Euler Tout
+        3:   56:bool Graph::isValidNextEdge(int u, int v) {
+        6:   57:    int n = adjMat.size();
+        -:   58:    // The edge u-v is valid in one of the following two
+        -:   59:    // cases:
+        -:   60:
+        -:   61:    // 1) If v is the only adjacent vertex of u
+        3:   62:    int count = 0;  // To store count of adjacent vertices
+        -:   63:
+       12:   64:    for (int i = 0; i != n; ++i) {
+        9:   65:        if (adjMat[u][i] != NO_EDGE) {
+        4:   66:            count++;
+        -:   67:        }
+        -:   68:    }
+        3:   69:    if (count == 1) return true;
+        -:   70:
+        -:   71:    // 2) If there are multiple adjacents, then u-v is not a
+        -:   72:    // bridge Do following steps to check if u-v is a bridge
+        -:   73:
+        -:   74:    // 2.a) count of vertices reachable from u
+        1:   75:    bool visited[n];
+        1:   76:    memset(visited, false, n);
+        1:   77:    int count1 = DFSCount(u, visited);
+        -:   78:
+        -:   79:    // 2.b) Remove edge (u, v) and after removing the edge,
+        -:   80:    // count vertices reachable from u
+        1:   81:    rmvEdge(u, v);
+        1:   82:    memset(visited, false, n);
+        1:   83:    int count2 = DFSCount(u, visited);
+        -:   84:
+        -:   85:    // 2.c) Add the edge back to the graph
+        1:   86:    addEdge(u, v);
+        -:   87:
+        -:   88:    // 2.d) If count1 is greater, then edge (u, v) is a
+        -:   89:    // bridge
+        4:   90:    return (count1 > count2) ? false : true;
+        -:   91:}
+        -:   92:
+        -:   93:// This function removes edge u-v from graph. It removes
+        -:   94:// the edge by replacing adjacent vertex value with NO_EDGE.
+        4:   95:void Graph::rmvEdge(int u, int v) {
+        -:   96:    // Find v in adjacency list of u and replace it with NO_EDGE
+        4:   97:    adjMat[u][v] = NO_EDGE;
+        -:   98:
+        -:   99:    // Find u in adjacency list of v and replace it with NO_EDGE
+        4:  100:    adjMat[v][u] = NO_EDGE;
+        4:  101:}
+        -:  102:
+        -:  103:// A DFS based function to count reachable vertices from v
+        6:  104:int Graph::DFSCount(int v, bool visited[]) {
+        -:  105:    // Mark the current node as visited
+        6:  106:    visited[v] = true;
+        6:  107:    int count = 1;
+        -:  108:
+        -:  109:    // Recur for all vertices adjacent to this vertex
+       24:  110:    for (size_t i = 0; i != adjMat.size(); ++i) {
+       18:  111:        if (adjMat[v][i] != NO_EDGE && !visited[i]) {
+        4:  112:            count += DFSCount(i, visited);
+        -:  113:        }
+        -:  114:    }
+        -:  115:
+        6:  116:    return count;
+        -:  117:}
