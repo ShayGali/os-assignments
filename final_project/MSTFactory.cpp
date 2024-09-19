@@ -1,10 +1,10 @@
-#include "MST_factory.hpp"
+#include "MSTFactory.hpp"
 
 #include <stdexcept>
 
 #include "client_commands.hpp"
 
-MST_Solver* MST_Factory::createMSTSolver(const string& solverType) {
+MSTSolver* MSTFactory::createMSTSolver(const string& solverType) {
     if (solverType == MST_KRUSKAL) {
         return new Kruskal();
     } else if (solverType == MST_PRIME) {

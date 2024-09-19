@@ -3,11 +3,11 @@
 #include <string>
 
 #include "Graph.hpp"
-#include "MST_solver.hpp"
+#include "MSTSolver.hpp"
 
 using std::string;
 
-class MST_Factory {
+class MSTFactory {
    public:
     /**
      * @brief Create a MST Solver object.
@@ -15,7 +15,7 @@ class MST_Factory {
      * It is the caller's responsibility to free the memory.
      *
      * @param solverType The type of the solver to be created.
-     * @return MST_Solver* A pointer to the created solver.
+     * @return MSTSolver* A pointer to the created solver.
      */
-    static MST_Solver* createMSTSolver(const string& solverType);
+    static MSTSolver* createMSTSolver(const string& solverType);
 };

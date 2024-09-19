@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "Graph.hpp"
-#include "MST_factory.hpp"
+#include "MSTFactory.hpp"
 #include "client_commands.hpp"
 
 using namespace std;
@@ -23,7 +23,7 @@ using namespace std;
 // global variable for the graph
 // Graph g(0);
 // TreeOnGraph mst(g);
-MST_Factory mst_factory;
+MSTFactory mst_factory;
 
 map<int, pair<Graph, TreeOnGraph>> graph_per_user;
 
@@ -98,7 +98,6 @@ int open_server() {
     return listener;
 }
 
-
 void accept_connection(int listener, fd_set &master, int &fdmax) {
     struct sockaddr_storage remoteaddr;  // client address
     socklen_t addrlen = sizeof(remoteaddr);
@@ -120,9 +119,6 @@ void accept_connection(int listener, fd_set &master, int &fdmax) {
 
 int main(void) {
     // variables for the server
-    struct sockaddr_storage remoteaddr;  // client address
-    int newfd;                           // newly accept()ed socket descriptor
-    char remoteIP[INET6_ADDRSTRLEN];
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
     string ans;
@@ -223,12 +219,12 @@ string command_handler(string input, int user_fd) {
             ans += e.what();
         }
     } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        MST_Solver *solver = mst_factory.createMSTSolver(command);
+        MSTSolver *solver = mst_factory.createMSTSolver(command);
         TreeOnGraph mst = solver->getMST(g);
         graph_per_user[user_fd].second = mst;
         ans += mst.toString();
         delete solver;
-    }  else {
+    } else {
         ans += "Invalid command";
     }
 

@@ -17,7 +17,7 @@ class Graph {
     /**
      * @brief Construct a new Graph object with n vertices.
      */
-    Graph(int n);
+    Graph(int n=0);
 
     /**
      * @brief Construct a new Graph object with an adjacency matrix.

@@ -13,10 +13,10 @@ run: $(PROG)
 clean:
 	rm -f $(PROG) *.o utils/*.o
 
-main: main.o Graph.o TreeOnGraph.o MST_factory.o MST_solver.o utils/union_find.o
+main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-main.o: main.cpp Graph.hpp TreeOnGraph.hpp MST_solver.hpp utils/union_find.hpp MST_factory.hpp client_commands.hpp
+main.o: main.cpp Graph.hpp TreeOnGraph.hpp MSTSolver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 Graph.o: Graph.cpp Graph.hpp
@@ -25,10 +25,10 @@ Graph.o: Graph.cpp Graph.hpp
 TreeOnGraph.o: TreeOnGraph.cpp TreeOnGraph.hpp Graph.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-MST_solver.o: MST_solver.cpp MST_solver.hpp Graph.hpp TreeOnGraph.hpp utils/union_find.hpp
+MSTSolver.o: MSTSolver.cpp MSTSolver.hpp Graph.hpp TreeOnGraph.hpp utils/union_find.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-MST_factory.o: MST_factory.cpp MST_factory.hpp MST_solver.hpp client_commands.hpp
+MSTFactory.o: MSTFactory.cpp MSTFactory.hpp MSTSolver.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 utils/union_find.o: utils/union_find.cpp utils/union_find.hpp

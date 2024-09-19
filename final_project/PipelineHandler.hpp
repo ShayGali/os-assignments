@@ -11,7 +11,7 @@
 #include <sstream>
 #include <thread>
 
-#include "command_handler.hpp"
+#include "CommandHandler.hpp"
 
 using std::condition_variable;
 using std::function;
@@ -35,9 +35,7 @@ constexpr int BUF_SIZE = 1024;
  */
 
 class ActiveObject {
-
    private:
-
     queue<function<void()>> tasks;
     thread thread;
     mutex m;
@@ -60,9 +58,7 @@ class ActiveObject {
         }
     }
 
-
    public:
-
     ActiveObject() : thread([this] { run(); }) {}
 
     ~ActiveObject() {
@@ -89,9 +85,7 @@ class ActiveObject {
 };
 
 class PipelineStage : public ActiveObject {
-
    private:
-
     shared_ptr<PipelineStage> next_stage;
     function<string(string, int)> task;
 
@@ -110,7 +104,6 @@ class PipelineStage : public ActiveObject {
 };
 
 class PipelineHandler : public CommandHandler {
-
    private:
     shared_ptr<PipelineStage> new_graph_stage;
     shared_ptr<PipelineStage> add_edge_stage;
@@ -201,7 +194,7 @@ class PipelineHandler : public CommandHandler {
     }
 
     string mst_init(string input, int user_fd) {
-        MST_Solver *solver = mst_factory.createMSTSolver(input);
+        MSTSolver *solver = mst_factory.createMSTSolver(input);
         TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
         graph_per_user[user_fd].second = mst;
         delete solver;
@@ -224,11 +217,8 @@ class PipelineHandler : public CommandHandler {
         return input + to_string(graph_per_user[user_fd].second.avgDist()) + "\n";
     }
 
-
-
    public:
-
-    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MST_Factory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
+    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
         new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
         add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
         remove_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return remove_edge(input, user_fd); }, nullptr);
@@ -256,7 +246,5 @@ class PipelineHandler : public CommandHandler {
         }
     }
 
-    void stop() override {}     // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called
-
-        
+    void stop() override {}  // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called
 };
