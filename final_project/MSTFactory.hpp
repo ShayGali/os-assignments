@@ -3,7 +3,7 @@
 #include <string>
 
 #include "Graph.hpp"
-#include "MST_solver.hpp"
+#include "MSTSolver.hpp"
 
 using std::string;
 

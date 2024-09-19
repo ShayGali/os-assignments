@@ -1,5 +1,5 @@
 
-#include "MST_solver.hpp"
+#include "MSTSolver.hpp"
 
 #include <algorithm>
 #include <climits>
