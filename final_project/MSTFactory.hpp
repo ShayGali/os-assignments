@@ -15,7 +15,7 @@ class MST_Factory {
      * It is the caller's responsibility to free the memory.
      *
      * @param solverType The type of the solver to be created.
-     * @return MST_Solver* A pointer to the created solver.
+     * @return MSTSolver* A pointer to the created solver.
      */
-    static MST_Solver* createMSTSolver(const string& solverType);
+    static MSTSolver* createMSTSolver(const string& solverType);
 };

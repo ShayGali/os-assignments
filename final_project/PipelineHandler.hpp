@@ -194,7 +194,7 @@ class PipelineHandler : public CommandHandler {
     }
 
     string mst_init(string input, int user_fd) {
-        MST_Solver *solver = mst_factory.createMSTSolver(input);
+        MSTSolver *solver = mst_factory.createMSTSolver(input);
         TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
         graph_per_user[user_fd].second = mst;
         delete solver;

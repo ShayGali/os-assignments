@@ -219,7 +219,7 @@ string command_handler(string input, int user_fd) {
             ans += e.what();
         }
     } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        MST_Solver *solver = mst_factory.createMSTSolver(command);
+        MSTSolver *solver = mst_factory.createMSTSolver(command);
         TreeOnGraph mst = solver->getMST(g);
         graph_per_user[user_fd].second = mst;
         ans += mst.toString();
