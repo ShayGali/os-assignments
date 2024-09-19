@@ -204,6 +204,25 @@ int main(int argc, char *argv[]) {
                     } else {                 // we got some data from a client
                         // add '\0' to the end of the buffer
                         buf[nbytes] = '\0';
+
+                        if (string(buf) == "kill\n") {
+                            // stop the handler
+                            handler->stop();
+                            // close all the sockets
+                            for (int j = 0; j <= fdmax; j++) {
+                                if (FD_ISSET(j, &master)) {
+                                    close(j);
+                                }
+                            }
+                            // free the memory
+                            delete handler;
+                            // stop the server
+                            close(listener);
+
+                            cout << "Server is shutting down" << endl;
+                            return 0;
+                        }
+
                         ans = handler->handle(buf, i);
                         if (send(i, ans.c_str(), ans.size(), 0) == -1) {
                             perror("send");
