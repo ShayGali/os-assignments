@@ -7,7 +7,7 @@
 
 using std::string;
 
-class MST_Factory {
+class MSTFactory {
    public:
     /**
      * @brief Create a MST Solver object.

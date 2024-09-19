@@ -95,7 +95,7 @@ class LFHandler : public CommandHandler {
     string init_graph(istringstream &iss, int user_fd);
 
    public:
-    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MST_Factory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {}
+    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {}
 
     string handle(string input, int user_fd) override {
         auto future = lf.addTask([this, input, user_fd] {

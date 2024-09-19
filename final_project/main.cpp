@@ -23,7 +23,7 @@ using namespace std;
 // global variable for the graph
 // Graph g(0);
 // TreeOnGraph mst(g);
-MST_Factory mst_factory;
+MSTFactory mst_factory;
 
 map<int, pair<Graph, TreeOnGraph>> graph_per_user;
 

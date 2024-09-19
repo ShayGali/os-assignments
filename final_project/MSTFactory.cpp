@@ -4,7 +4,7 @@
 
 #include "client_commands.hpp"
 
-MSTSolver* MST_Factory::createMSTSolver(const string& solverType) {
+MSTSolver* MSTFactory::createMSTSolver(const string& solverType) {
     if (solverType == MST_KRUSKAL) {
         return new Kruskal();
     } else if (solverType == MST_PRIME) {

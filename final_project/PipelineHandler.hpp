@@ -218,7 +218,7 @@ class PipelineHandler : public CommandHandler {
     }
 
    public:
-    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MST_Factory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
+    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
         new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
         add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
         remove_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return remove_edge(input, user_fd); }, nullptr);
