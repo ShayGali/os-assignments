@@ -80,6 +80,11 @@ class LeaderFollower {
         cv.notify_one();
         return future;
     }
+
+    void stop_service() {
+        std::unique_lock<std::mutex> lock(mutex);
+        stop = true;
+    }
 };
 
 class LFHandler : public CommandHandler {
@@ -102,9 +107,7 @@ class LFHandler : public CommandHandler {
     }
 
     void stop() override {
-        lf.addTask([this] {
-            CommandHandler::stop();
-        });
+        lf.stop_service();
     }
 };
 

@@ -19,7 +19,8 @@ constexpr int BUF_SIZE = 1024;
 
 class CommandHandler {
    public:
-    CommandHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory);
+    CommandHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : graph_per_user(graph_per_user), mst_factory(mst_factory) {}
+    virtual ~CommandHandler() = default;
     virtual string handle(string input, int user_fd) = 0;
     virtual void stop() = 0;
 

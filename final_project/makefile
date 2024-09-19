@@ -14,7 +14,7 @@ clean:
 	rm -f $(PROG) *.o utils/*.o
 
 main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ -pthread
 
 main.o: main.cpp Graph.hpp TreeOnGraph.hpp MSTSolver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp CommandHandler.hpp LFHandler.hpp PipelineHandler.hpp
 	$(CXX) $(CXXFLAGS) -c $<

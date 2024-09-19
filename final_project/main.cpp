@@ -119,7 +119,34 @@ void accept_connection(int listener, fd_set &master, int &fdmax) {
     }
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+    CommandHandler *handler = nullptr;
+    int opt;
+    // check if we get l flag or p flag (l for LFHandler, p for PipelineHandler)
+    while ((opt = getopt(argc, argv, "lp")) != -1) {
+        switch (opt) {
+            case 'l':
+                if (handler != nullptr) {
+                    delete handler;
+                    cerr << "You can't use both flags" << endl;
+                    exit(EXIT_FAILURE);
+                }
+                handler = new LFHandler(graph_per_user, mst_factory);
+                break;
+            case 'p':
+                if (handler != nullptr) {
+                    delete handler;
+                    cerr << "You can't use both flags" << endl;
+                    exit(EXIT_FAILURE);
+                }
+                handler = new PipelineHandler(graph_per_user, mst_factory);
+                break;
+            default: /* '?' */
+                fprintf(stderr, "Usage: %s [-l] [-p]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
     // variables for the server
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
