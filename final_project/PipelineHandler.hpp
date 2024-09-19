@@ -8,7 +8,6 @@
 #include <memory>
 #include <mutex>
 #include <queue>
-#include <sstream>
 #include <thread>
 
 #include "CommandHandler.hpp"
@@ -113,49 +112,6 @@ class PipelineHandler : public CommandHandler {
     shared_ptr<PipelineStage> mst_longest_stage;
     shared_ptr<PipelineStage> mst_shortest_stage;
     shared_ptr<PipelineStage> mst_avg_stage;
-
-    string init_graph(string input, int user_fd) {
-        istringstream iss(input);
-        char buf[BUF_SIZE] = {0};
-        string first, second, third, send_data;
-        int n, m, i, u, v, w, nbytes;
-        if (!(iss >> n >> m)) {
-            throw invalid_argument("Invalid input - expected n and m");
-        }
-        Graph temp(n);
-        i = 0;
-        while (i < m) {
-            if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-                if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
-                    throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
-                }
-                send_data += buf;
-                iss = istringstream(buf);
-                continue;
-            }
-            // convert string to int
-            u = stoi(first);
-            v = stoi(second);
-            w = stoi(third);
-
-            // check if u and v are valid
-            if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
-                throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(n) + " and u != v. Got: " + first + " " + second);
-            }
-
-            if (w <= 0) {
-                throw invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + third);
-            }
-
-            // add edge to the graph
-            temp.addEdge(u - 1, v - 1, w);
-            temp.addEdge(v - 1, u - 1, w);
-            i++;
-        }
-        graph_per_user[user_fd].first = temp;
-
-        return send_data;
-    }
 
     string add_edge(string input, int user_fd) {
         istringstream iss(input);
