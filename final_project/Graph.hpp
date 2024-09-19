@@ -1,10 +1,12 @@
 #pragma once
 
+#include <string>
 #include <tuple>
 #include <vector>
 
 typedef std::tuple<int, int, int> Edge;
 
+using std::string;
 using std::vector;
 
 constexpr int NO_EDGE = -1;
@@ -17,7 +19,7 @@ class Graph {
     /**
      * @brief Construct a new Graph object with n vertices.
      */
-    Graph(int n=0);
+    Graph(int n = 0);
 
     /**
      * @brief Construct a new Graph object with an adjacency matrix.
@@ -63,4 +65,6 @@ class Graph {
      * @brief Get the adjacency matrix of the graph.
      */
     const vector<vector<int>>& getAdjMat() const;
+
+    string toString() const;
 };

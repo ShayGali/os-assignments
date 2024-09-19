@@ -147,6 +147,12 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (handler == nullptr) {
+        // display warning message (in yellow)
+        cerr << "\033[33m" << "[WARNING] No flag was given, using LFHandler by default" << "\033[0m" << endl;
+        handler = new LFHandler(graph_per_user, mst_factory);
+    }
+
     // variables for the server
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
@@ -181,6 +187,9 @@ int main(int argc, char *argv[]) {
                 if (i == listener) {
                     // handle new connections
                     accept_connection(listener, master, fdmax);
+
+                    // create a new graph for the user
+                    graph_per_user[i] = make_pair(Graph(), TreeOnGraph());
                 } else {  // handle data from a client
                     if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
                         // got error or connection closed by client
@@ -195,120 +204,15 @@ int main(int argc, char *argv[]) {
                     } else {                 // we got some data from a client
                         // add '\0' to the end of the buffer
                         buf[nbytes] = '\0';
-                        ans = command_handler(buf, i);
-                        // TODO: send the answer to the client
+                        ans = handler->handle(buf, i);
                         if (send(i, ans.c_str(), ans.size(), 0) == -1) {
                             perror("send");
                         }
+                        memset(buf, 0, sizeof(buf));  // clear the buffer
                     }
                 }  // END handle data from client
             }  // END got new incoming connection
         }  // END looping through file descriptors
     }  // END for(;;)--and you thought it would never end!
     return 0;
-}
-
-string command_handler(string input, int user_fd) {
-    string ans = "Got input: " + input;
-    string command;
-    istringstream iss(input);
-    int u, v, w;
-
-    Graph &g = graph_per_user[user_fd].first;
-
-    iss >> command;
-    if (command == NEW_GRAPH) {
-        try {
-            ans += init_graph(iss, user_fd);
-            ans += "New graph created";
-        } catch (exception &e) {
-            ans += e.what();
-        }
-    } else if (command == ADD_EDGE) {
-        // get u and v from the input
-        if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
-            ans += "Invalid input - expected format: u v w\n";
-            return ans;
-        }
-        try {
-            g.addEdge(u - 1, v - 1, w);
-            g.addEdge(v - 1, u - 1, w);
-        } catch (exception &e) {
-            ans += e.what();
-        }
-    } else if (command == REMOVE_EDGE) {
-        if (!(iss >> u >> v)) {
-            ans += "Invalid input - expected u and v\n";
-            return ans;
-        }
-        try {
-            g.removeEdge(u - 1, v - 1);
-            g.removeEdge(v - 1, u - 1);
-        } catch (exception &e) {
-            ans += e.what();
-        }
-    } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        MSTSolver *solver = mst_factory.createMSTSolver(command);
-        TreeOnGraph mst = solver->getMST(g);
-        graph_per_user[user_fd].second = mst;
-        ans += mst.toString();
-        delete solver;
-    } else {
-        ans += "Invalid command";
-    }
-
-    // ad LF if needed
-    if (ans.back() != '\n') {
-        ans += "\n";
-    }
-    iss.clear();
-    return ans;
-}
-
-/**
- * @brief Initialize the graph with the given number of vertices and edges
- * expected input: n m u1 v1 w1 u2 v2 w2 ... um vm wm
- */
-string init_graph(istringstream &iss, int user_fd) {
-    char buf[BUF_SIZE] = {0};
-    string first, second, third, send_data;
-    int n, m, i, u, v, w, nbytes;
-    if (!(iss >> n >> m)) {
-        throw invalid_argument("Invalid input - expected n and m");
-    }
-    Graph temp(n);
-    i = 0;
-    while (i < m) {
-        if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-            if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
-                throw invalid_argument("Invalid input - you dont send the " + to_string(i + 1) + " edge");
-            }
-            send_data += buf;
-            iss = istringstream(buf);
-            continue;
-        }
-        // convert string to int
-        u = stoi(first);
-        v = stoi(second);
-        w = stoi(third);
-
-        // check if u and v are valid
-        if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
-            throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(n) + " and u != v. Got: " + first + " " + second);
-        }
-
-        if (w <= 0) {
-            throw invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + third);
-        }
-
-        // add edge to the graph
-        temp.addEdge(u - 1, v - 1, w);
-        temp.addEdge(v - 1, u - 1, w);
-        i++;
-    }
-
-    // if we reach here, we have a valid graph
-    graph_per_user[user_fd].first = temp;
-
-    return send_data;
 }

@@ -18,6 +18,10 @@ using std::tuple;
  * Run in O(E log E) time.
  */
 TreeOnGraph Kruskal::getMST(Graph &graph) const {
+    if (graph.V() == 0) {
+        return TreeOnGraph(graph);
+    }
+
     UnionFind uf(graph.V());
     // vector<pair<int, int>> mst_edges;
     Graph mst(graph.V());
@@ -42,6 +46,10 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
 }
 
 TreeOnGraph Prim::getMST(Graph &graph) const {
+    if (graph.V() == 0) {
+        return TreeOnGraph(graph);
+    }
+
     // vector of tuples (vertex, key, parent)
     vector<tuple<int, int, int>> v_k_p;
     for (int i = 0; i < graph.V(); i++) {

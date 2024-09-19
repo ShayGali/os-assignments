@@ -17,6 +17,7 @@ using std::string;
 
 constexpr int BUF_SIZE = 1024;
 
+
 class CommandHandler {
    public:
     CommandHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : graph_per_user(graph_per_user), mst_factory(mst_factory) {}
@@ -73,7 +74,7 @@ class CommandHandler {
 
         // if we reach here, we have a valid graph
         graph_per_user[user_fd].first = temp;
-
+        
         return send_data;
     }
 };

@@ -98,9 +98,6 @@ class LFHandler : public CommandHandler {
     string handle(string input, int user_fd) override {
         auto future = lf.addTask([this, input, user_fd] {
             string ans = cmd_handler(input, user_fd);
-            if (send(user_fd, ans.c_str(), ans.size(), 0) == -1) {
-                perror("send");
-            }
             return ans;
         });
         return future.get();  // Wait for the task to complete and get the result
@@ -118,11 +115,12 @@ string LFHandler::cmd_handler(string input, int user_fd) {
     int u, v, w;
 
     Graph &g = graph_per_user[user_fd].first;
-
     iss >> command;
     if (command == NEW_GRAPH) {
         try {
-            ans += init_graph(iss.str(), user_fd);
+            string remaining_input;
+            getline(iss, remaining_input);
+            ans += init_graph(remaining_input, user_fd);
             ans += "New graph created";
         } catch (std::exception &e) {
             ans += e.what();
@@ -156,6 +154,8 @@ string LFHandler::cmd_handler(string input, int user_fd) {
         graph_per_user[user_fd].second = mst;
         ans += mst.toString();
         delete solver;
+    } else if (command == PRINT_GRAPH) {
+        ans = g.toString();
     } else {
         ans += "Invalid command";
     }

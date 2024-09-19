@@ -76,3 +76,15 @@ vector<Edge> Graph::getEdges() const {
 
     return edges;
 }
+
+string Graph::toString() const {
+    string str = "";
+    for (int i = 0; i < adjMat.size(); i++) {
+        for (int j = i + 1; j < adjMat.size(); j++) {
+            if (adjMat[i][j] != NO_EDGE) {
+                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(adjMat[i][j]) + "\n";
+            }
+        }
+    }
+    return str;
+}

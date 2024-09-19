@@ -65,7 +65,7 @@ string TreeOnGraph::toString() {
     for (int i = 0; i < mat.size(); i++) {
         for (int j = i + 1; j < mat.size(); j++) {
             if (mat[i][j] != NO_EDGE) {
-                str += std::to_string(i) + " <-> " + std::to_string(j) + " , " + std::to_string(mat[i][j]) + "\n";
+                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(mat[i][j]) + "\n";
             }
         }
     }
