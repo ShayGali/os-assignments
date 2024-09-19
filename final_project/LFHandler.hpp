@@ -12,7 +12,7 @@
 #include <thread>
 #include <vector>
 
-#include "command_handler.hpp"
+#include "CommandHandler.hpp"
 
 using std::istringstream;
 using std::string;

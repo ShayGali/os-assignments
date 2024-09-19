@@ -16,7 +16,7 @@ clean:
 main: main.o Graph.o TreeOnGraph.o MST_factory.o MST_solver.o utils/union_find.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-main.o: main.cpp Graph.hpp TreeOnGraph.hpp MST_solver.hpp utils/union_find.hpp MST_factory.hpp client_commands.hpp
+main.o: main.cpp Graph.hpp TreeOnGraph.hpp MST_solver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 Graph.o: Graph.cpp Graph.hpp
@@ -28,7 +28,7 @@ TreeOnGraph.o: TreeOnGraph.cpp TreeOnGraph.hpp Graph.hpp
 MST_solver.o: MST_solver.cpp MST_solver.hpp Graph.hpp TreeOnGraph.hpp utils/union_find.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-MST_factory.o: MST_factory.cpp MST_factory.hpp MST_solver.hpp client_commands.hpp
+MST_factory.o: MST_factory.cpp MSTFactory.hpp MST_solver.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 utils/union_find.o: utils/union_find.cpp utils/union_find.hpp

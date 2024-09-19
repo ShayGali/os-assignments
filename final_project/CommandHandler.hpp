@@ -3,7 +3,7 @@
 #include <map>
 
 #include "Graph.hpp"
-#include "MST_factory.hpp"
+#include "MSTFactory.hpp"
 #include "TreeOnGraph.hpp"
 #include "client_commands.hpp"
 

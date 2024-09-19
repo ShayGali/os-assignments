@@ -1,7 +1,6 @@
-#include "MST_factory.hpp"
-
 #include <stdexcept>
 
+#include "MSTFactory.hpp"
 #include "client_commands.hpp"
 
 MST_Solver* MST_Factory::createMSTSolver(const string& solverType) {

@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "Graph.hpp"
-#include "MST_factory.hpp"
+#include "MSTFactory.hpp"
 #include "client_commands.hpp"
 
 using namespace std;
@@ -97,7 +97,6 @@ int open_server() {
 
     return listener;
 }
-
 
 void accept_connection(int listener, fd_set &master, int &fdmax) {
     struct sockaddr_storage remoteaddr;  // client address
@@ -228,7 +227,7 @@ string command_handler(string input, int user_fd) {
         graph_per_user[user_fd].second = mst;
         ans += mst.toString();
         delete solver;
-    }  else {
+    } else {
         ans += "Invalid command";
     }
 
