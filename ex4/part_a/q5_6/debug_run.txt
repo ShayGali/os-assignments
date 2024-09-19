@@ -1,0 +1,60 @@
+gdb hello
+GNU gdb (Ubuntu 9.2-0ubuntu1~20.04.1) 9.2
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from hello...
+(gdb) target remote | vgdb
+Remote debugging using | vgdb
+relaying data between gdb and process 3322
+warning: remote target does not support file transfer, attempting to access files from local filesystem.
+Reading symbols from /lib64/ld-linux-x86-64.so.2...
+Reading symbols from /usr/lib/debug/.build-id/c9/a47e328eb2f1f41bcbcf31f9c11b9e17aa2a83.debug...
+0x0000000004001100 in _start () from /lib64/ld-linux-x86-64.so.2
+(gdb) next
+Single stepping until exit from function _start,
+which has no line number information.
+
+Program received signal SIGTRAP, Trace/breakpoint trap.
+0x0000000000109234 in main (argc=1, argv=0x1ffeffff38) at hello.c:21
+21	        if (string_so_far != (char *)0)
+(gdb) next
+23	            strcpy(string, string_so_far);
+(gdb) next
+
+Program received signal SIGTRAP, Trace/breakpoint trap.
+0x000000000483f094 in _vgr20080ZU_libcZdsoZa_strcpy () from /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so
+(gdb) next
+Single stepping until exit from function _vgr20080ZU_libcZdsoZa_strcpy,
+which has no line number information.
+main (argc=1, argv=0x1ffeffff38) at hello.c:29
+29	        strcat(string, argv[i]);
+(gdb) bt
+#0  main (argc=1, argv=0x1ffeffff38) at hello.c:29
+(gdb) next
+30	        if (i < argc - 1) // means this is not the last command
+(gdb) next
+34	        string_so_far = string;
+(gdb) next
+14	    for (int i = 0; i < argc; i++)
+(gdb) next
+36	    printf("You enterd: %s\n", string_so_far);
+(gdb) next
+37	    return 0;
+(gdb) next
+38	}
+(gdb) next
+__libc_start_main (main=0x1091c9 <main>, argc=1, argv=0x1ffeffff38, init=<optimized out>, fini=<optimized out>, rtld_fini=<optimized out>, 
+    stack_end=0x1ffeffff28) at ../csu/libc-start.c:342
+342	../csu/libc-start.c: No such file or directory.

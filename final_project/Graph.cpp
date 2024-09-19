@@ -60,12 +60,16 @@ int Graph::V() const {
     return adjMat.size();
 }
 
+/**
+ * @brief Get the edges of the graph. (the graph is undirected)
+ */
 vector<Edge> Graph::getEdges() const {
+    // the graph is undirected, so we need to iterate only over the upper triangle of the matrix
     vector<Edge> edges;
     for (int i = 0; i < adjMat.size(); i++) {
-        for (int j = 0; j < adjMat.size(); j++) {
+        for (int j = i + 1; j < adjMat.size(); j++) {
             if (adjMat[i][j] != NO_EDGE) {
-                edges.push_back(std::make_tuple(i, j, adjMat[i][j]));
+                edges.push_back({i, j, adjMat[i][j]});
             }
         }
     }
