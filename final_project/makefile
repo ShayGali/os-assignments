@@ -13,7 +13,7 @@ run: $(PROG)
 clean:
 	rm -f $(PROG) *.o utils/*.o
 
-main: main.o Graph.o TreeOnGraph.o MST_factory.o MST_solver.o utils/union_find.o
+main: main.o Graph.o TreeOnGraph.o MSTFactory.o MST_solver.o utils/union_find.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 main.o: main.cpp Graph.hpp TreeOnGraph.hpp MST_solver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp
@@ -28,7 +28,7 @@ TreeOnGraph.o: TreeOnGraph.cpp TreeOnGraph.hpp Graph.hpp
 MST_solver.o: MST_solver.cpp MST_solver.hpp Graph.hpp TreeOnGraph.hpp utils/union_find.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-MST_factory.o: MST_factory.cpp MSTFactory.hpp MST_solver.hpp client_commands.hpp
+MSTFactory.o: MSTFactory.cpp MSTFactory.hpp MST_solver.hpp client_commands.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 utils/union_find.o: utils/union_find.cpp utils/union_find.hpp

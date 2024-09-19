@@ -119,9 +119,6 @@ void accept_connection(int listener, fd_set &master, int &fdmax) {
 
 int main(void) {
     // variables for the server
-    struct sockaddr_storage remoteaddr;  // client address
-    int newfd;                           // newly accept()ed socket descriptor
-    char remoteIP[INET6_ADDRSTRLEN];
     char buf[BUF_SIZE];  // buffer for client data
     int nbytes;
     string ans;
