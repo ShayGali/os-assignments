@@ -1,5 +1,5 @@
 CXX=clang++
-CXXFLAGS=-std=c++2a -g -Wall
+CXXFLAGS=-std=c++2a -g -Wall -fPIC
 
 PROG=main
 

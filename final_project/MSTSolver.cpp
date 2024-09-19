@@ -39,6 +39,7 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
         int v = std::get<1>(e);
         if (uf.unite(u, v)) {  // if the vertices are in different components
             mst.addEdge(u, v, graph.getWeight(u, v));
+            mst.addEdge(v, u, graph.getWeight(u, v));
         }
     }
 
@@ -99,8 +100,12 @@ TreeOnGraph Prim::getMST(Graph &graph) const {
     // create the MST
     Graph mst(graph.V());
     for (tuple<int, int, int> t : v_k_p) {
-        if (std::get<2>(t) != -1) {
-            mst.addEdge(std::get<0>(t), std::get<2>(t), std::get<1>(t));
+        int u = std::get<0>(t);
+        int v = std::get<2>(t);  // parent
+        int w = std::get<1>(t);
+        if (v != -1) {
+            mst.addEdge(u, v, w);
+            mst.addEdge(v, u, w);
         }
     }
 

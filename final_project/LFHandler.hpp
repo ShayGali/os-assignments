@@ -152,7 +152,7 @@ string LFHandler::cmd_handler(string input, int user_fd) {
         MSTSolver *solver = mst_factory.createMSTSolver(command);
         TreeOnGraph mst = solver->getMST(g);
         graph_per_user[user_fd].second = mst;
-        ans += mst.toString();
+        ans += "MST: \n" + mst.toString();
         delete solver;
     } else if (command == PRINT_GRAPH) {
         ans = g.toString();
