@@ -26,8 +26,6 @@ using std::thread;
 using std::to_string;
 using std::unique_lock;
 
-constexpr int BUF_SIZE = 1024;
-
 /**
  * @brief Command handler implamented using pipeline and active object pattern
  *
@@ -89,7 +87,7 @@ class PipelineStage : public ActiveObject {
     function<string(string, int)> task;
 
    public:
-    PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage) : task(std::move(task)), next_stage(next_stage) {}
+    PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage) : next_stage(next_stage), task(std::move(task)) {}
 
     future<string> process(string input, int user_fd) {
         return invoke([this, input, user_fd] {

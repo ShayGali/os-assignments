@@ -16,7 +16,7 @@ clean:
 main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-main.o: main.cpp Graph.hpp TreeOnGraph.hpp MSTSolver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp
+main.o: main.cpp Graph.hpp TreeOnGraph.hpp MSTSolver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp CommandHandler.hpp LFHandler.hpp PipelineHandler.hpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 Graph.o: Graph.cpp Graph.hpp

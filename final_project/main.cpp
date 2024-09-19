@@ -14,8 +14,11 @@
 #include <sstream>
 #include <vector>
 
+#include "CommandHandler.hpp"
 #include "Graph.hpp"
+#include "LFHandler.hpp"
 #include "MSTFactory.hpp"
+#include "PipelineHandler.hpp"
 #include "client_commands.hpp"
 
 using namespace std;
@@ -28,7 +31,6 @@ MSTFactory mst_factory;
 map<int, pair<Graph, TreeOnGraph>> graph_per_user;
 
 // Define constants for buffer size, port, and max clients
-constexpr int BUF_SIZE = 1024;
 constexpr char PORT[] = "9034";
 constexpr int MAX_CLIENT = 10;
 

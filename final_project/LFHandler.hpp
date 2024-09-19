@@ -1,18 +1,11 @@
 #pragma once
-
 #include <condition_variable>
 #include <functional>
 #include <future>
-#include <iostream>
 #include <mutex>
 #include <queue>
 #include <thread>
 #include <vector>
-
-#include "CommandHandler.hpp"
-
-using std::istringstream;
-using std::string;
 
 constexpr int MAX_THREADS = 4;
 
@@ -64,15 +57,21 @@ class LeaderFollower {
     }
 
     template <typename F>
-    auto addTask(F &&task) -> std::future<decltype(task())> {
-        auto promise = std::make_shared<std::promise<decltype(task())>>();
+    auto addTask(F &&task) -> std::future<typename std::result_of<F()>::type> {
+        using ReturnType = typename std::result_of<F()>::type;
+        auto promise = std::make_shared<std::promise<ReturnType>>();
         auto future = promise->get_future();
 
         {
             std::unique_lock<std::mutex> lock(mutex);
             tasks.emplace([promise, task = std::forward<F>(task)]() mutable {
                 try {
-                    promise->set_value(task());
+                    if constexpr (std::is_void<ReturnType>::value) {
+                        task();
+                        promise->set_value();
+                    } else {
+                        promise->set_value(task());
+                    }
                 } catch (...) {
                     promise->set_exception(std::current_exception());
                 }
@@ -87,7 +86,6 @@ class LFHandler : public CommandHandler {
    private:
     LeaderFollower lf;
     string cmd_handler(string input, int user_fd);
-    string init_graph(istringstream &iss, int user_fd);
 
    public:
     LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {}
@@ -121,7 +119,7 @@ string LFHandler::cmd_handler(string input, int user_fd) {
     iss >> command;
     if (command == NEW_GRAPH) {
         try {
-            ans += init_graph(iss, user_fd);
+            ans += init_graph(iss.str(), user_fd);
             ans += "New graph created";
         } catch (std::exception &e) {
             ans += e.what();
