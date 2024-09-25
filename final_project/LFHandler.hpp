@@ -11,17 +11,24 @@ constexpr int MAX_THREADS = 4;
 
 class LeaderFollower {
    private:
-    std::queue<std::function<void()>> tasks;
-    std::mutex mutex;
-    std::condition_variable cv;
-    std::vector<std::thread> threads;
-    bool stop;
+    std::queue<std::function<void()>> tasks;  // FIFO queue
+    std::mutex mutex;                         // Protects tasks
+    std::condition_variable cv;               // Signals a task is available
+    std::vector<std::thread> threads;         // Worker threads
+    bool stop;                                // Signals to worker threads to stop
 
+    /**
+     * will be called by each worker thread
+     * will wait for a task to be available and execute it
+     */
     void workerThread() {
         while (true) {
-            std::unique_lock<std::mutex> lock(mutex);
+            std::unique_lock<std::mutex> lock(mutex);  // lock the mutex
+
+            // Wait for a task to be available
             cv.wait(lock, [this] { return !tasks.empty() || stop; });
 
+            // Check if we should stop
             if (stop && tasks.empty()) {
                 return;
             }
@@ -41,6 +48,7 @@ class LeaderFollower {
    public:
     LeaderFollower() : stop(false) {
         for (size_t i = 0; i < MAX_THREADS; ++i) {
+            // Create worker threads
             threads.emplace_back(&LeaderFollower::workerThread, this);
         }
     }
@@ -48,21 +56,31 @@ class LeaderFollower {
     ~LeaderFollower() {
         {
             std::unique_lock<std::mutex> lock(mutex);
-            stop = true;
+            stop = true;  // Signal to worker threads to stop
         }
-        cv.notify_all();
+        cv.notify_all();  // Wake up all worker threads
+
+        // Wait for all worker threads to finish
         for (auto &thread : threads) {
             thread.join();
         }
     }
 
+    /**
+     * Add a task to the queue and return a future that will be set once the task is complete
+     */
     template <typename F>
     auto addTask(F &&task) -> std::future<typename std::result_of<F()>::type> {
+        // Get the return type of the task
         using ReturnType = typename std::result_of<F()>::type;
+
+        // Create a promise to set the result of the task
         auto promise = std::make_shared<std::promise<ReturnType>>();
+
+        // Get the future from the promise
         auto future = promise->get_future();
 
-        {
+        {  // add the task to the queue
             std::unique_lock<std::mutex> lock(mutex);
             tasks.emplace([promise, task = std::forward<F>(task)]() mutable {
                 try {
@@ -77,7 +95,7 @@ class LeaderFollower {
                 }
             });
         }
-        cv.notify_one();
+        cv.notify_one();  // Wake up one worker thread
         return future;
     }
 
@@ -89,12 +107,18 @@ class LeaderFollower {
 
 class LFHandler : public CommandHandler {
    private:
-    LeaderFollower lf;
+    LeaderFollower lf;  // Leader-Follower pattern
     string cmd_handler(string input, int user_fd);
 
    public:
-    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {}
+    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
+        : CommandHandler(graph_per_user, mst_factory) {}
 
+    /**
+     * Handle the input command
+     * will get a string input and a user file descriptor.
+     * add new task to the Leader-Follower pattern
+     */
     string handle(string input, int user_fd) override {
         auto future = lf.addTask([this, input, user_fd] {
             string ans = cmd_handler(input, user_fd);
@@ -108,6 +132,9 @@ class LFHandler : public CommandHandler {
     }
 };
 
+/**
+ * Handle the input command
+ */
 string LFHandler::cmd_handler(string input, int user_fd) {
     string ans = "Got input: " + input;
     string command;

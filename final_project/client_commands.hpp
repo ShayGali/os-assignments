@@ -1,3 +1,7 @@
+/**
+ * 
+ * This file contains a constant string for each command that the client can send to the server.
+ */
 #pragma once
 
 #include <string>

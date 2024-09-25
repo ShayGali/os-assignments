@@ -33,11 +33,11 @@ using std::unique_lock;
 
 class ActiveObject {
    private:
-    queue<function<void()>> tasks;
-    thread my_thread;
-    mutex m;
-    condition_variable cv;
-    bool stop = false;
+    queue<function<void()>> tasks;  // queue of tasks
+    thread my_thread;               // thread that will run the tasks
+    mutex m;                        // mutex for the tasks queue
+    condition_variable cv;          // condition variable to notify the thread that there is a new task
+    bool stop = false;              // flag to stop the thread
 
     void run() {
         while (!stop) {
@@ -67,16 +67,19 @@ class ActiveObject {
         my_thread.join();
     }
 
+    /**
+     * @brief invoke a function in the active object
+     */
     template <typename F, typename... Args>
     auto invoke(F &&f, Args &&...args) -> future<decltype(f(args...))> {
-        using return_type = decltype(f(args...));
+        using return_type = decltype(f(args...));  // get the return type of the function
         auto task = make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
         auto result = task->get_future();
         {
             unique_lock<mutex> lock(m);
-            tasks.emplace([task]() { (*task)(); });
+            tasks.emplace([task]() { (*task)(); });  // add the task to the queue
         }
-        cv.notify_one();
+        cv.notify_one();  // notify the thread that there is a new task
         return result;
     }
 };
@@ -84,17 +87,17 @@ class ActiveObject {
 class PipelineStage : public ActiveObject {
    private:
     function<string(string, int)> task;
+    shared_ptr<PipelineStage> next_stage;
 
    public:
-    shared_ptr<PipelineStage> next_stage;
     PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage)
         : task(std::move(task)), next_stage(next_stage) {}
 
     future<string> process(string input, int user_fd) {
         return invoke([this, input, user_fd] {
             string output = (task(input, user_fd));
-            if (next_stage != nullptr) {
-                output = next_stage->process(output, user_fd).get();
+            if (next_stage != nullptr) {                              // if there is a next stage
+                output = next_stage->process(output, user_fd).get();  // process the output in the next stage
             }
             return output;
         });
@@ -103,6 +106,7 @@ class PipelineStage : public ActiveObject {
 
 class PipelineHandler : public CommandHandler {
    private:
+    // stages of the pipeline
     shared_ptr<PipelineStage> new_graph_stage;
     shared_ptr<PipelineStage> add_edge_stage;
     shared_ptr<PipelineStage> remove_edge_stage;
@@ -175,6 +179,7 @@ class PipelineHandler : public CommandHandler {
 
    public:
     PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
+        // create the stages of the pipeline
         new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
         add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
         remove_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return remove_edge(input, user_fd); }, nullptr);
