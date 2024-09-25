@@ -5,7 +5,7 @@ VALGRIND_FLAGS=--tool=memcheck -v --leak-check=full --show-leak-kinds=all  --err
 
 PROG=main
 
-.PHONY: clean all run coverage
+.PHONY: clean all run coverage valgrind
 
 all: $(PROG)
 
@@ -18,6 +18,7 @@ clean:
 coverage: $(PROG)
 	./coverage.sh
 	gcov -r main.cpp Graph.cpp TreeOnGraph.cpp MSTSolver.cpp MSTFactory.cpp LFHandler.hpp PipelineHandler.hpp
+	mv *.gcov coverage_res/
 
 main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o utils/MinHeap.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -pthread -lgcov

@@ -8,7 +8,21 @@ using std::queue;
 TreeOnGraph::TreeOnGraph(Graph& T) : mst(T) {
     allPairs = getAllPairs();
 
-    // TODO: check if the graph is connected and have n-1 edges
+    size_t n = mst.getAdjMat().size();
+
+    // check if the graph is connected
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (!(allPairs[i][j] > 0 || (i == j && allPairs[i][j] == 0))) {
+                throw std::runtime_error("vertices: " + std::to_string(i) + " and " + std::to_string(j) + " are not connected");
+            }
+        }
+    }
+
+    // Cheking ot T that we have n-1 edges
+    if (mst.getEdges().size() != n - 1) {
+        throw std::runtime_error("The graph is not a tree");
+    }
 }
 
 int TreeOnGraph::getWeight() {

@@ -32,6 +32,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         file_name = sys.argv[1]
     else:
-        file_name = "inputs.txt"
+        file_name = "inputs/input.txt"
     main(file_name)
             

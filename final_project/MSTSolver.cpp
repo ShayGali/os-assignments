@@ -36,6 +36,7 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
         return std::get<2>(a) < std::get<2>(b);
     });
 
+    // iterate over the edges, and unoin the vertices if they are not in the same component
     for (Edge e : edges) {
         int u = std::get<0>(e);
         int v = std::get<1>(e);
@@ -56,7 +57,7 @@ TreeOnGraph Prim::getMST(Graph &graph) const {
         return TreeOnGraph(graph);
     }
 
-    int V = graph.V();
+    int V = graph.V(); 
     vector<int> parent(V, -1);
     vector<int> key(V, INT_MAX);
     MinHeap minHeap(V);
