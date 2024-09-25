@@ -1,7 +1,6 @@
 CXX=g++
 CXXFLAGS=-std=c++2a -g -Wall
 CODE_COVERAGE_FLAGS = -fprofile-arcs -ftest-coverage
-VALGRIND_FLAGS=--tool=memcheck -v --leak-check=full --show-leak-kinds=all  --error-exitcode=99
 
 PROG=main
 

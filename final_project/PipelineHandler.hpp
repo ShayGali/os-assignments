@@ -40,23 +40,29 @@ class ActiveObject {
     bool stop = false;              // flag to stop the thread
 
     void run() {
-        while (!stop) {
+        while (true) {
             function<void()> task;
             {
                 unique_lock<mutex> lock(m);
                 cv.wait(lock, [this] { return !tasks.empty() || stop; });
-                if (tasks.empty()) {
-                    continue;
+                if (stop && tasks.empty()) {
+                    return;
                 }
-                task = tasks.front();
-                tasks.pop();
+                if (!tasks.empty()) {
+                    task = tasks.front();
+                    tasks.pop();
+                }
             }
-            task();
+            if (task) {
+                task();
+            }
         }
     }
 
    public:
-    ActiveObject() : my_thread([this] { run(); }) {}
+    ActiveObject() {
+        my_thread = thread([this] { run(); });
+    }
 
     ~ActiveObject() {
         {
@@ -178,7 +184,8 @@ class PipelineHandler : public CommandHandler {
     }
 
    public:
-    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : CommandHandler(graph_per_user, mst_factory) {
+    PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
+        : CommandHandler(graph_per_user, mst_factory), new_graph_stage(nullptr), add_edge_stage(nullptr), remove_edge_stage(nullptr), mst_init_stage(nullptr), mst_weight_stage(nullptr), mst_longest_stage(nullptr), mst_shortest_stage(nullptr), mst_avg_stage(nullptr), print_graph_stage(nullptr) {
         // create the stages of the pipeline
         new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
         add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
