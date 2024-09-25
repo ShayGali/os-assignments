@@ -22,11 +22,6 @@ class Graph {
     Graph(int n = 0);
 
     /**
-     * @brief Construct a new Graph object with an adjacency matrix.
-     */
-    Graph(vector<vector<int>>& adjMat);
-
-    /**
      * @brief Get the number of vertices in the graph.
      */
     int V() const;
@@ -40,11 +35,6 @@ class Graph {
      * @brief Remove an edge from the graph.
      */
     void removeEdge(size_t u, size_t v);
-
-    /**
-     * @brief Check if there is an edge between u and v.
-     */
-    bool isEdge(size_t u, size_t v) const;
 
     /**
      * @brief Get the weight of the edge between u and v.

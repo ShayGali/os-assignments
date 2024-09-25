@@ -1,0 +1,29 @@
+        -:    0:Source:TreeOnGraph.hpp
+        -:    1:#pragma once
+        -:    2:
+        -:    3:#include <string>
+        -:    4:#include <vector>
+        -:    5:
+        -:    6:#include "Graph.hpp"
+        -:    7:
+        -:    8:using std::pair;
+        -:    9:using std::string;
+        -:   10:using std::vector;
+        -:   11:
+        -:   12:class TreeOnGraph {
+        -:   13:    Graph mst;
+        -:   14:    vector<vector<int>> allPairs;
+        -:   15:
+        -:   16:   public:
+       12:   17:    TreeOnGraph() = default;
+        -:   18:    TreeOnGraph(Graph& T);
+        -:   19:    int getWeight();     // Total weight of the MST
+        -:   20:    int longestDist();   // Longest distance between two vertices
+        -:   21:    int avgDist();       // Average distance between all two vertices
+        -:   22:    int shortestDist();  // Shortest distance between two vertices i,j where (i,j) and edge belongs to MST
+        -:   23:    string toString();   // Returns a string representation of the tree
+        -:   24:
+        -:   25:   private:
+        -:   26:    vector<vector<int>> getAllPairs();   // Returns a matrix of distances between all pairs of vertices
+        -:   27:    vector<int> getDistances(int root);  // Returns a vector of distances from root to all other vertices
+        -:   28:};

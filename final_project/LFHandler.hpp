@@ -116,63 +116,63 @@ string LFHandler::cmd_handler(string input, int user_fd) {
 
     Graph &g = graph_per_user[user_fd].first;
     iss >> command;
-    if (command == NEW_GRAPH) {
-        try {
+
+    std::cout << "client " << user_fd << " sent: " << input << std::endl;
+
+    try {
+        if (command == NEW_GRAPH) {
             string remaining_input;
             getline(iss, remaining_input);
             ans += init_graph(remaining_input, user_fd);
             ans += "New graph created";
-        } catch (std::exception &e) {
-            ans += e.what();
-        }
-    } else if (command == ADD_EDGE) {
-        // get u and v from the input
-        if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
-            ans += "Invalid input - expected format: u v w\n";
-            return ans;
-        }
-        try {
+
+        } else if (command == ADD_EDGE) {
+            // get u and v from the input
+            if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
+                ans += "Invalid input - expected format: u v w\n";
+                return ans;
+            }
             g.addEdge(u - 1, v - 1, w);
             g.addEdge(v - 1, u - 1, w);
-        } catch (std::exception &e) {
-            ans += e.what();
-        }
-    } else if (command == REMOVE_EDGE) {
-        if (!(iss >> u >> v)) {
-            ans += "Invalid input - expected u and v\n";
-            return ans;
-        }
-        try {
+
+        } else if (command == REMOVE_EDGE) {
+            if (!(iss >> u >> v)) {
+                ans += "Invalid input - expected u and v\n";
+                return ans;
+            }
             g.removeEdge(u - 1, v - 1);
             g.removeEdge(v - 1, u - 1);
-        } catch (std::exception &e) {
-            ans += e.what();
-        }
-    } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        MSTSolver *solver = mst_factory.createMSTSolver(command);
-        TreeOnGraph mst = solver->getMST(g);
-        graph_per_user[user_fd].second = mst;
-        ans += "MST: \n" + mst.toString();
+        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+            MSTSolver *solver = mst_factory.createMSTSolver(command);
+            TreeOnGraph mst = solver->getMST(g);
+            graph_per_user[user_fd].second = mst;
+            ans += "MST: \n" + mst.toString();
 
-        // do calculations
-        // add weight
-        ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
-        // add longest distance
-        ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
-        // add shortest distance
-        ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
-        // add average distance
-        ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
-        delete solver;
-    } else if (command == PRINT_GRAPH) {
-        ans = g.toString();
-    } else {
-        ans += "Invalid command";
+            // do calculations
+            // add weight
+            ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
+            // add longest distance
+            ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
+            // add shortest distance
+            ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
+            // add average distance
+            ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
+            delete solver;
+        } else if (command == PRINT_GRAPH) {
+            ans = g.toString();
+        } else {
+            ans += "Invalid command";
+        }
+    } catch (const std::exception &e) {
+        ans += "Error: " + string(e.what());
     }
 
     // ad LF if needed
     if (ans.back() != '\n') {
         ans += "\n";
     }
+
+    std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
+
     return ans;
 }

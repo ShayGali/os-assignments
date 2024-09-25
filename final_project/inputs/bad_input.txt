@@ -1,0 +1,11 @@
+ng 3 1
+4 5 6
+1 2 3
+re
+re 4 5 6
+ae
+ae 4 5 6
+invalid_command
+ng
+ng 3 1 4 5 6
+ng 3 1 1 2 -1

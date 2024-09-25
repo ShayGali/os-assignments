@@ -1,0 +1,16 @@
+        -:    0:Source:MSTFactory.cpp
+        -:    1:#include "MSTFactory.hpp"
+        -:    2:
+        -:    3:#include <stdexcept>
+        -:    4:
+        -:    5:#include "client_commands.hpp"
+        -:    6:
+        4:    7:MSTSolver* MSTFactory::createMSTSolver(const string& solverType) {
+        4:    8:    if (solverType == MST_KRUSKAL) {
+        2:    9:        return new Kruskal();
+        2:   10:    } else if (solverType == MST_PRIME) {
+        2:   11:        return new Prim();
+        -:   12:    } else {
+    #####:   13:        throw std::invalid_argument("Invalid solver type");
+        -:   14:    }
+        -:   15:}

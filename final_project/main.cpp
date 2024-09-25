@@ -115,7 +115,7 @@ void accept_connection(int listener, fd_set &master, int &fdmax) {
 
         char remoteIP[INET6_ADDRSTRLEN];
         const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-        cout << "selectserver: new connection from " << client_ip << " on socket " << newfd << std::endl;
+        cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
     }
 }
 
@@ -193,9 +193,8 @@ int main(int argc, char *argv[]) {
                 } else {  // handle data from a client
                     if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
                         // got error or connection closed by client
-                        if (nbytes == 0) {
-                            // connection closed
-                            cout << "selectserver: socket " << i << " hung up" << std::endl;
+                        if (nbytes == 0 || errno == ECONNRESET) {
+                            cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
                         } else {
                             perror("recv");
                         }
@@ -205,7 +204,8 @@ int main(int argc, char *argv[]) {
                         // add '\0' to the end of the buffer
                         buf[nbytes] = '\0';
 
-                        if (string(buf) == "kill\n") {
+                        if (string(buf).starts_with("kill")) {
+                            cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
                             // stop the handler
                             handler->stop();
                             // close all the sockets
@@ -218,8 +218,7 @@ int main(int argc, char *argv[]) {
                             delete handler;
                             // stop the server
                             close(listener);
-
-                            cout << "Server is shutting down" << endl;
+                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
                             return 0;
                         }
 

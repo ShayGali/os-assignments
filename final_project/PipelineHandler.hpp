@@ -192,6 +192,8 @@ class PipelineHandler : public CommandHandler {
         string command;
         iss >> command;
 
+        std::cout << "client " << user_fd << " sent: " << input << std::endl;
+
         // update the input to be the rest of the input
         getline(iss, input);
 
@@ -210,12 +212,14 @@ class PipelineHandler : public CommandHandler {
                 ans += "Invalid command";
             }
         } catch (const invalid_argument &e) {
-            ans += e.what();
+            ans += "Error: " + string(e.what()) + '\n';
         }
 
         if (ans.back() != '\n') {
             ans += '\n';
         }
+
+        std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
 
         return ans;
     }

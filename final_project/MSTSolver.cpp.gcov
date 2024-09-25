@@ -1,0 +1,93 @@
+        -:    0:Source:MSTSolver.cpp
+        -:    1:
+        -:    2:#include "MSTSolver.hpp"
+        -:    3:
+        -:    4:#include <algorithm>
+        -:    5:#include <climits>
+        -:    6:#include <functional>
+        -:    7:#include <queue>
+        -:    8:#include <tuple>
+        -:    9:
+        -:   10:#include "TreeOnGraph.hpp"
+        -:   11:#include "utils/union_find.hpp"
+        -:   12:#include "utils/MinHeap.hpp"
+        -:   13:
+        -:   14:using std::sort;
+        -:   15:using std::tuple;
+        -:   16:using std::vector;
+        -:   17:
+        -:   18:/**
+        -:   19: * @brief Get the MST object with Kruskal's algorithm.
+        -:   20: * Run in O(E log E) time.
+        -:   21: */
+        2:   22:TreeOnGraph Kruskal::getMST(Graph &graph) const {
+        2:   23:    if (graph.V() == 0) {
+    #####:   24:        return TreeOnGraph(graph);
+        -:   25:    }
+        -:   26:
+        4:   27:    UnionFind uf(graph.V());
+        -:   28:    // vector<pair<int, int>> mst_edges;
+        4:   29:    Graph mst(graph.V());
+        -:   30:
+        -:   31:    // add the edges to a vector of tuples (src, dest, weight)
+        4:   32:    vector<Edge> edges = graph.getEdges();
+        -:   33:
+        -:   34:    // sort the edges by weight
+        2:   35:    sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) {
+        4:   36:        return std::get<2>(a) < std::get<2>(b);
+        -:   37:    });
+        -:   38:
+        8:   39:    for (Edge e : edges) {
+        6:   40:        int u = std::get<0>(e);
+        6:   41:        int v = std::get<1>(e);
+        6:   42:        if (uf.unite(u, v)) {  // if the vertices are in different components
+        4:   43:            mst.addEdge(u, v, graph.getWeight(u, v));
+        4:   44:            mst.addEdge(v, u, graph.getWeight(u, v));
+        -:   45:        }
+        -:   46:    }
+        -:   47:
+        2:   48:    return TreeOnGraph(mst);
+        -:   49:}
+        -:   50:
+        -:   51:
+        -:   52:
+        -:   53:
+        2:   54:TreeOnGraph Prim::getMST(Graph &graph) const {
+        2:   55:    if (graph.V() == 0) {
+    #####:   56:        return TreeOnGraph(graph);
+        -:   57:    }
+        -:   58:
+        2:   59:    int V = graph.V();
+        4:   60:    vector<int> parent(V, -1);
+        4:   61:    vector<int> key(V, INT_MAX);
+        4:   62:    MinHeap minHeap(V);
+        -:   63:
+        2:   64:    key[0] = 0;
+        2:   65:    minHeap.insertKey(0, key[0]);
+        -:   66:
+        6:   67:    for (int v = 1; v < V; ++v) {
+        4:   68:        minHeap.insertKey(v, key[v]);
+        -:   69:    }
+        -:   70:
+        8:   71:    while (!minHeap.isEmpty()) {
+        6:   72:        int u = minHeap.extractMin();
+        -:   73:
+       18:   74:        for (int v : graph.getNeighbors(u)) {
+       12:   75:            int weight = graph.getWeight(u, v);
+        -:   76:
+       12:   77:            if (minHeap.isInMinHeap(v) && weight < key[v]) {
+        6:   78:                key[v] = weight;
+        6:   79:                parent[v] = u;
+        6:   80:                minHeap.decreaseKey(v, key[v]);
+        -:   81:            }
+        -:   82:        }
+        -:   83:    }
+        -:   84:
+        4:   85:    Graph mst(V);
+        6:   86:    for (int i = 1; i < V; ++i) {
+        4:   87:        mst.addEdge(parent[i], i, key[i]);
+        4:   88:        mst.addEdge(i, parent[i], key[i]);
+        -:   89:    }
+        -:   90:
+        2:   91:    return TreeOnGraph(mst);
+        -:   92:}

@@ -1,0 +1,26 @@
+        -:    0:Source:MSTSolver.hpp
+        -:    1:#pragma once
+        -:    2:#include "Graph.hpp"
+        -:    3:#include "TreeOnGraph.hpp"
+        -:    4:class MSTSolver {
+        -:    5:   public:
+        -:    6:    virtual TreeOnGraph getMST(Graph &graph) const = 0;
+       4*:    7:    virtual ~MSTSolver() {};  // virtual destructor for polymorphism
+------------------
+_ZN9MSTSolverD0Ev:
+    #####:    7:    virtual ~MSTSolver() {};  // virtual destructor for polymorphism
+------------------
+_ZN9MSTSolverD2Ev:
+        4:    7:    virtual ~MSTSolver() {};  // virtual destructor for polymorphism
+------------------
+        -:    8:};
+        -:    9:
+        -:   10:class Kruskal : public MSTSolver {
+        -:   11:   public:
+        -:   12:    TreeOnGraph getMST(Graph &graph) const override;
+        -:   13:};
+        -:   14:
+        -:   15:class Prim : public MSTSolver {
+        -:   16:   public:
+        -:   17:    TreeOnGraph getMST(Graph &graph) const override;
+        -:   18:};

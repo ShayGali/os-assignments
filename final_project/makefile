@@ -15,7 +15,8 @@ run: $(PROG)
 clean:
 	rm -f $(PROG) *.o utils/*.o *.gcno *.gcda *.gcov
 
-coverage:
+coverage: $(PROG)
+	./coverage.sh
 	gcov -r main.cpp Graph.cpp TreeOnGraph.cpp MSTSolver.cpp MSTFactory.cpp LFHandler.hpp PipelineHandler.hpp
 
 main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o utils/MinHeap.o

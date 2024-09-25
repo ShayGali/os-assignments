@@ -2,9 +2,9 @@
 
 #include <string>
 
-const std::string NEW_GRAPH = "New_graph";
-const std::string ADD_EDGE = "New_edge";
-const std::string REMOVE_EDGE = "Remove_edge";
-const std::string MST_PRIME = "MST_p";
-const std::string MST_KRUSKAL = "MST_k";
-const std::string PRINT_GRAPH = "Print_graph";
+const std::string NEW_GRAPH = "ng";
+const std::string ADD_EDGE = "ae";
+const std::string REMOVE_EDGE = "re";
+const std::string MST_PRIME = "mstp";
+const std::string MST_KRUSKAL = "mstk";
+const std::string PRINT_GRAPH = "pg";
