@@ -153,6 +153,16 @@ string LFHandler::cmd_handler(string input, int user_fd) {
         TreeOnGraph mst = solver->getMST(g);
         graph_per_user[user_fd].second = mst;
         ans += "MST: \n" + mst.toString();
+
+        // do calculations
+        // add weight
+        ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
+        // add longest distance
+        ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
+        // add shortest distance
+        ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
+        // add average distance
+        ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
         delete solver;
     } else if (command == PRINT_GRAPH) {
         ans = g.toString();
@@ -164,6 +174,5 @@ string LFHandler::cmd_handler(string input, int user_fd) {
     if (ans.back() != '\n') {
         ans += "\n";
     }
-    iss.clear();
     return ans;
 }

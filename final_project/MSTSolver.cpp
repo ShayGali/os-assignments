@@ -9,9 +9,11 @@
 
 #include "TreeOnGraph.hpp"
 #include "utils/union_find.hpp"
+#include "utils/MinHeap.hpp"
 
 using std::sort;
 using std::tuple;
+using std::vector;
 
 /**
  * @brief Get the MST object with Kruskal's algorithm.
@@ -46,67 +48,44 @@ TreeOnGraph Kruskal::getMST(Graph &graph) const {
     return TreeOnGraph(mst);
 }
 
+
+
+
 TreeOnGraph Prim::getMST(Graph &graph) const {
     if (graph.V() == 0) {
         return TreeOnGraph(graph);
     }
 
-    // vector of tuples (vertex, key, parent)
-    vector<tuple<int, int, int>> v_k_p;
-    for (int i = 0; i < graph.V(); i++) {
-        v_k_p.push_back({i, INT_MAX, -1});
+    int V = graph.V();
+    vector<int> parent(V, -1);
+    vector<int> key(V, INT_MAX);
+    MinHeap minHeap(V);
+
+    key[0] = 0;
+    minHeap.insertKey(0, key[0]);
+
+    for (int v = 1; v < V; ++v) {
+        minHeap.insertKey(v, key[v]);
     }
 
-    v_k_p[0] = {0, 0, -1};
+    while (!minHeap.isEmpty()) {
+        int u = minHeap.extractMin();
 
-    // priority queue to get the minimum edge (compar by the key)
-    auto cmp = [](tuple<int, int, int> *a, tuple<int, int, int> *b) { return std::get<1>(*a) > std::get<1>(*b); };
-    std::priority_queue<tuple<int, int, int> *, vector<tuple<int, int, int> *>, decltype(cmp)> pq(cmp);
+        for (int v : graph.getNeighbors(u)) {
+            int weight = graph.getWeight(u, v);
 
-    // fill the priority queue with all the vertices
-    for (int i = 0; i < graph.V(); i++) {
-        pq.push(&v_k_p[i]);
-    }
-
-    // the main part of the algorithm
-    while (!pq.empty()) {
-        tuple<int, int, int> *u = pq.top();
-        pq.pop();
-
-        for (int v : graph.getNeighbors(std::get<0>(*u))) {
-            // copy the pq to a vector
-            vector<tuple<int, int, int> *> pq_copy;
-            while (!pq.empty()) {
-                pq_copy.push_back(pq.top());
-                pq.pop();
-            }
-            // return the elements to the pq
-            for (tuple<int, int, int> *t : pq_copy) {
-                pq.push(t);
-            }
-
-            // check if v is in the pq
-            auto it = std::find_if(pq_copy.begin(), pq_copy.end(), [v](tuple<int, int, int> *t) { return std::get<0>(*t) == v; });
-            if (it != pq_copy.end()) {
-                int w = graph.getWeight(std::get<0>(*u), v);
-                if (w < std::get<1>(**it)) {
-                    std::get<1>(**it) = w;
-                    std::get<2>(**it) = std::get<0>(*u);
-                }
+            if (minHeap.isInMinHeap(v) && weight < key[v]) {
+                key[v] = weight;
+                parent[v] = u;
+                minHeap.decreaseKey(v, key[v]);
             }
         }
     }
 
-    // create the MST
-    Graph mst(graph.V());
-    for (tuple<int, int, int> t : v_k_p) {
-        int u = std::get<0>(t);
-        int v = std::get<2>(t);  // parent
-        int w = std::get<1>(t);
-        if (v != -1) {
-            mst.addEdge(u, v, w);
-            mst.addEdge(v, u, w);
-        }
+    Graph mst(V);
+    for (int i = 1; i < V; ++i) {
+        mst.addEdge(parent[i], i, key[i]);
+        mst.addEdge(i, parent[i], key[i]);
     }
 
     return TreeOnGraph(mst);

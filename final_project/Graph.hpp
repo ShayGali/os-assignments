@@ -34,22 +34,22 @@ class Graph {
     /**
      * @brief Add an edge to the graph.
      */
-    void addEdge(int u, int v, int weight);
+    void addEdge(size_t u, size_t v, int weight);
 
     /**
      * @brief Remove an edge from the graph.
      */
-    void removeEdge(int u, int v);
+    void removeEdge(size_t u, size_t v);
 
     /**
      * @brief Check if there is an edge between u and v.
      */
-    bool isEdge(int u, int v) const;
+    bool isEdge(size_t u, size_t v) const;
 
     /**
      * @brief Get the weight of the edge between u and v.
      */
-    int getWeight(int u, int v) const;
+    int getWeight(size_t u, size_t v) const;
 
     /**
      * @brief Get the edges of the graph.
@@ -59,7 +59,7 @@ class Graph {
     /**
      * @brief Get the neighbors of a vertex.
      */
-    vector<int> getNeighbors(int u) const;
+    vector<int> getNeighbors(size_t u) const;
 
     /**
      * @brief Get the adjacency matrix of the graph.

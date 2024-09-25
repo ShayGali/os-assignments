@@ -34,7 +34,7 @@ using std::unique_lock;
 class ActiveObject {
    private:
     queue<function<void()>> tasks;
-    thread thread;
+    thread my_thread;
     mutex m;
     condition_variable cv;
     bool stop = false;
@@ -56,7 +56,7 @@ class ActiveObject {
     }
 
    public:
-    ActiveObject() : thread([this] { run(); }) {}
+    ActiveObject() : my_thread([this] { run(); }) {}
 
     ~ActiveObject() {
         {
@@ -64,7 +64,7 @@ class ActiveObject {
             stop = true;
         }
         cv.notify_all();
-        thread.join();
+        my_thread.join();
     }
 
     template <typename F, typename... Args>
@@ -83,17 +83,18 @@ class ActiveObject {
 
 class PipelineStage : public ActiveObject {
    private:
-    shared_ptr<PipelineStage> next_stage;
     function<string(string, int)> task;
 
    public:
-    PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage) : next_stage(next_stage), task(std::move(task)) {}
+    shared_ptr<PipelineStage> next_stage;
+    PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage)
+        : task(std::move(task)), next_stage(next_stage) {}
 
     future<string> process(string input, int user_fd) {
         return invoke([this, input, user_fd] {
             string output = (task(input, user_fd));
             if (next_stage != nullptr) {
-                next_stage->process(output, user_fd);
+                output = next_stage->process(output, user_fd).get();
             }
             return output;
         });
@@ -110,6 +111,7 @@ class PipelineHandler : public CommandHandler {
     shared_ptr<PipelineStage> mst_longest_stage;
     shared_ptr<PipelineStage> mst_shortest_stage;
     shared_ptr<PipelineStage> mst_avg_stage;
+    shared_ptr<PipelineStage> print_graph_stage;
 
     string add_edge(string input, int user_fd) {
         istringstream iss(input);
@@ -156,19 +158,19 @@ class PipelineHandler : public CommandHandler {
     }
 
     string mst_weight(string input, int user_fd) {
-        return input + to_string(graph_per_user[user_fd].second.getWeight()) + "\n";
+        return input + "Weight: " + to_string(graph_per_user[user_fd].second.getWeight()) + "\n";
     }
 
     string mst_longest(string input, int user_fd) {
-        return input + to_string(graph_per_user[user_fd].second.longestDist()) + "\n";
+        return input + "Longest distance: " + to_string(graph_per_user[user_fd].second.longestDist()) + "\n";
     }
 
     string mst_shortest(string input, int user_fd) {
-        return input + to_string(graph_per_user[user_fd].second.shortestDist()) + "\n";
+        return input + "Shortest distance: " + to_string(graph_per_user[user_fd].second.shortestDist()) + "\n";
     }
 
     string mst_avg(string input, int user_fd) {
-        return input + to_string(graph_per_user[user_fd].second.avgDist()) + "\n";
+        return input + "Average distance: " + to_string(graph_per_user[user_fd].second.avgDist()) + "\n";
     }
 
    public:
@@ -176,28 +178,46 @@ class PipelineHandler : public CommandHandler {
         new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
         add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
         remove_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return remove_edge(input, user_fd); }, nullptr);
-        mst_init_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_init(input, user_fd); }, mst_weight_stage);
-        mst_weight_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_weight(input, user_fd); }, mst_longest_stage);
-        mst_longest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_longest(input, user_fd); }, mst_shortest_stage);
-        mst_shortest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_shortest(input, user_fd); }, mst_avg_stage);
         mst_avg_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_avg(input, user_fd); }, nullptr);
+        mst_shortest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_shortest(input, user_fd); }, mst_avg_stage);
+        mst_longest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_longest(input, user_fd); }, mst_shortest_stage);
+        mst_weight_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_weight(input, user_fd); }, mst_longest_stage);
+        mst_init_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_init(input, user_fd); }, mst_weight_stage);
+        print_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return this->graph_per_user[user_fd].first.toString(); }, nullptr);
     }
 
     string handle(string input, int user_fd) override {
+        string ans = "Got input: " + input;
         istringstream iss(input);
         string command;
         iss >> command;
-        if (command == NEW_GRAPH) {
-            return new_graph_stage->process(input, user_fd).get();
-        } else if (command == ADD_EDGE) {
-            return add_edge_stage->process(input, user_fd).get();
-        } else if (command == REMOVE_EDGE) {
-            return remove_edge_stage->process(input, user_fd).get();
-        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-            return mst_init_stage->process(command, user_fd).get();
-        } else {
-            return "Invalid command\n";
+
+        // update the input to be the rest of the input
+        getline(iss, input);
+
+        try {
+            if (command == NEW_GRAPH) {
+                ans += new_graph_stage->process(input, user_fd).get();
+            } else if (command == ADD_EDGE) {
+                ans += add_edge_stage->process(input, user_fd).get();
+            } else if (command == REMOVE_EDGE) {
+                ans += remove_edge_stage->process(input, user_fd).get();
+            } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+                ans += mst_init_stage->process(command, user_fd).get();
+            } else if (command == PRINT_GRAPH) {
+                ans += print_graph_stage->process(input, user_fd).get();
+            } else {
+                ans += "Invalid command";
+            }
+        } catch (const invalid_argument &e) {
+            ans += e.what();
         }
+
+        if (ans.back() != '\n') {
+            ans += '\n';
+        }
+
+        return ans;
     }
 
     void stop() override {}  // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called

@@ -14,8 +14,8 @@ TreeOnGraph::TreeOnGraph(Graph& T) : mst(T) {
 int TreeOnGraph::getWeight() {
     int weight = 0;
     vector<vector<int>> mat = mst.getAdjMat();
-    for (int i = 0; i < mat.size(); i++) {
-        for (int j = i + 1; j < mat.size(); j++) {
+    for (size_t i = 0; i < mat.size(); i++) {
+        for (size_t j = i + 1; j < mat.size(); j++) {
             if (mat[i][j] != NO_EDGE) {
                 weight += mat[i][j];
             }
@@ -26,8 +26,8 @@ int TreeOnGraph::getWeight() {
 
 int TreeOnGraph::longestDist() {
     int longest = 0;
-    for (int i = 0; i < allPairs.size(); i++) {
-        for (int j = i + 1; j < allPairs.size(); j++) {
+    for (size_t i = 0; i < allPairs.size(); i++) {
+        for (size_t j = i + 1; j < allPairs.size(); j++) {
             if (allPairs[i][j] > longest) {
                 longest = allPairs[i][j];
             }
@@ -38,8 +38,8 @@ int TreeOnGraph::longestDist() {
 
 int TreeOnGraph::avgDist() {
     int sum = 0;
-    for (int i = 0; i < allPairs.size(); i++) {
-        for (int j = i; j < allPairs.size(); j++) {
+    for (size_t i = 0; i < allPairs.size(); i++) {
+        for (size_t j = i; j < allPairs.size(); j++) {
             sum += allPairs[i][j];
         }
     }
@@ -49,8 +49,8 @@ int TreeOnGraph::avgDist() {
 int TreeOnGraph::shortestDist() {
     int shortest = INT_MAX;
     vector<vector<int>> mat = mst.getAdjMat();
-    for (int i = 0; i < mat.size(); i++) {
-        for (int j = i + 1; j < mat.size(); j++) {
+    for (size_t i = 0; i < mat.size(); i++) {
+        for (size_t j = i + 1; j < mat.size(); j++) {
             if (mat[i][j] != NO_EDGE && mat[i][j] < shortest) {
                 shortest = mat[i][j];
             }
@@ -62,8 +62,8 @@ int TreeOnGraph::shortestDist() {
 string TreeOnGraph::toString() {
     string str = "";
     vector<vector<int>> mat = mst.getAdjMat();
-    for (int i = 0; i < mat.size(); i++) {
-        for (int j = i + 1; j < mat.size(); j++) {
+    for (size_t i = 0; i < mat.size(); i++) {
+        for (size_t j = i + 1; j < mat.size(); j++) {
             if (mat[i][j] != NO_EDGE) {
                 str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(mat[i][j]) + "\n";
             }
@@ -75,11 +75,11 @@ string TreeOnGraph::toString() {
 vector<vector<int>> TreeOnGraph::getAllPairs() {
     vector<vector<int>> mat = mst.getAdjMat();
     vector<vector<int>> allPairs;
-    for (int i = 0; i < mat.size(); i++) {
+    for (size_t i = 0; i < mat.size(); i++) {
         vector<int> distances = getDistances(i);
         allPairs.push_back(distances);
     }
-    for (int i = 0; i < allPairs.size(); i++) {
+    for (size_t i = 0; i < allPairs.size(); i++) {
         allPairs[i][i] = 0;
     }
     return allPairs;
@@ -94,7 +94,7 @@ vector<int> TreeOnGraph::getDistances(int root) {
     while (!q.empty()) {
         int u = q.front();
         q.pop();
-        for (int v = 0; v < mat.size(); v++) {
+        for (size_t v = 0; v < mat.size(); v++) {
             if (mat[u][v] != NO_EDGE && distances[v] == NO_EDGE) {
                 distances[v] = distances[u] + mat[u][v];
                 q.push(v);
