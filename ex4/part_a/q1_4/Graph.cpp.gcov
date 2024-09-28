@@ -1,11 +1,11 @@
-        -:    0:Source:EulerCircle.cpp
-        -:    0:Graph:EulerCircle.gcno
-        -:    0:Data:EulerCircle.gcda
+        -:    0:Source:Graph.cpp
+        -:    0:Graph:Graph.gcno
+        -:    0:Data:Graph.gcda
         -:    0:Runs:6
         -:    1:/*
         -:    2:This code is base on the code from https://www.geeksforgeeks.org/fleurys-algorithm-for-printing-eulerian-path/
         -:    3:*/
-        -:    4:#include "EulerCircle.hpp"
+        -:    4:#include "Graph.hpp"
         -:    5:
         -:    6:#include <string.h>
         -:    7:

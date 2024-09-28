@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "EulerCircle.hpp"
+#include "Graph.hpp"
 
 /**
  * @brief Generate a random undirected graph with the given number of vertices and edges.

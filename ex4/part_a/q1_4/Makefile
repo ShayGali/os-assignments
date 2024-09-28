@@ -30,7 +30,7 @@ coverage: $(PROG)
 	# run with to many edges
 	./$(PROG) -v 5 -e 100 -s 0 > /dev/null || true
 
-	gcov -r EulerCircle.cpp
+	gcov -r Graph.cpp
 	gcov -r $(PROG).cpp
 
 
@@ -48,11 +48,11 @@ profiling: $(PROG)
 clean:
 	rm -f $(PROG) *.o
 
-main: main.o EulerCircle.o
+main: main.o Graph.o
 	$(CXX) $(CXXFLAGS) $(PROFILNIG_FLAGS) -o $@ $^ -lgcov
 	
-main.o: main.cpp EulerCircle.hpp
+main.o: main.cpp Graph.hpp
 	$(CXX) $(CXXFLAGS) $(CODE_COVERAGE_FLAGS) -c main.cpp -o main.o
 
-EulerCircle.o: EulerCircle.cpp EulerCircle.hpp
-	$(CXX) $(CXXFLAGS) $(CODE_COVERAGE_FLAGS) -c EulerCircle.cpp -o EulerCircle.o
+Graph.o: Graph.cpp Graph.hpp
+	$(CXX) $(CXXFLAGS) $(CODE_COVERAGE_FLAGS) -c Graph.cpp -o Graph.o

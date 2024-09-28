@@ -1,7 +1,7 @@
 /*
 This code is base on the code from https://www.geeksforgeeks.org/fleurys-algorithm-for-printing-eulerian-path/
 */
-#include "EulerCircle.hpp"
+#include "Graph.hpp"
 
 #include <string.h>
 
