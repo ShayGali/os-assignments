@@ -2,6 +2,7 @@
 
 #include <climits>
 #include <queue>
+#include <stdexcept>
 
 using std::queue;
 
