@@ -10,7 +10,21 @@ constexpr int NO_EDGE = 0;
 
 // A class that represents an undirected graph
 class Graph {
+   private:
     vector<vector<int>> adjMat;  // Adjacency matrix
+
+    // helper functions for finding Eulerian cycle
+    bool isEulerian();
+    void printEulerUtil(int s);
+
+    // This function returns count of vertices reachable
+    // from v. It does DFS
+    int DFSCount(int v, bool visited[]);
+
+    // Utility function to check if edge u-v is a valid next
+    // edge in Eulerian trail or circuit
+    bool isValidNextEdge(int u, int v);
+
    public:
     // Constructor and destructor
     Graph(int n) {
@@ -29,15 +43,5 @@ class Graph {
     }
 
     // Methods to print Eulerian tour
-    bool isEulerian();
     void printEulerCycle();
-    void printEulerUtil(int s);
-
-    // This function returns count of vertices reachable
-    // from v. It does DFS
-    int DFSCount(int v, bool visited[]);
-
-    // Utility function to check if edge u-v is a valid next
-    // edge in Eulerian trail or circuit
-    bool isValidNextEdge(int u, int v);
 };
