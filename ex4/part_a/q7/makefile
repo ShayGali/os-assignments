@@ -13,4 +13,3 @@ race:
 
 clean:
 	rm -f race *.o
-# valgrind --tool=helgrind ./race
