@@ -165,8 +165,8 @@
         -:  164:    fd_set read_fds;  // temp file descriptor list for select()
         -:  165:    int fdmax;        // maximum file descriptor number
         -:  166:
-       51:  167:    FD_ZERO(&master);  // clear the master and temp sets
-       51:  168:    FD_ZERO(&read_fds);
+        3:  167:    FD_ZERO(&master);  // clear the master and temp sets
+        3:  168:    FD_ZERO(&read_fds);
         -:  169:
         -:  170:    // add the listener to the master set
         3:  171:    FD_SET(listener, &master);
@@ -222,16 +222,17 @@
         3:  221:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
         3:  222:                            return 0;
         -:  223:                        }
-        -:  224:
+        -:  224:                        // lock the mutex
        32:  225:                        ans = handler->handle(buf, i);
-       32:  226:                        if (send(i, ans.c_str(), ans.size(), 0) == -1) {
-    #####:  227:                            perror("send");
-        -:  228:                        }
-       32:  229:                        memset(buf, 0, sizeof(buf));  // clear the buffer
-        -:  230:                    }
-        -:  231:                }  // END handle data from client
-        -:  232:            }  // END got new incoming connection
-        -:  233:        }  // END looping through file descriptors
-       43:  234:    }  // END for(;;)--and you thought it would never end!
-        -:  235:    return 0;
-        -:  236:}
+        -:  226:                        // unlock the mutex
+       32:  227:                        if (send(i, ans.c_str(), ans.size(), 0) == -1) {
+    #####:  228:                            perror("send");
+        -:  229:                        }
+       32:  230:                        memset(buf, 0, sizeof(buf));  // clear the buffer
+        -:  231:                    }
+        -:  232:                }  // END handle data from client
+        -:  233:            }  // END got new incoming data
+        -:  234:        }  // END looping through file descriptors
+       43:  235:    }  // END for(;;)--and you thought it would never end!
+        -:  236:    return 0;
+        -:  237:}
