@@ -41,6 +41,9 @@ valgrind_mem: $(PROG)
 valgrind_call: $(PROG)
 	valgrind --tool=callgrind ./$(PROG) -v $(V) -e $(E) -s $(SEED)
 
+# to see the output use:
+# kcachegrind callgrind.out.<pid>
+
 profiling: $(PROG)
 	./$(PROG) -v 251 -e 31375 -s $(SEED) 
 	gprof $(PROG) > profiling.txt

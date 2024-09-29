@@ -68,8 +68,8 @@ class ActiveObject {
         {
             unique_lock<mutex> lock(m);
             stop = true;
+            cv.notify_all();  // Move notify_all() inside the lock
         }
-        cv.notify_all();
         my_thread.join();
     }
 

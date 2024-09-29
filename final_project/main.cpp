@@ -221,15 +221,16 @@ int main(int argc, char *argv[]) {
                             cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
                             return 0;
                         }
-
+                        // lock the mutex
                         ans = handler->handle(buf, i);
+                        // unlock the mutex
                         if (send(i, ans.c_str(), ans.size(), 0) == -1) {
                             perror("send");
                         }
                         memset(buf, 0, sizeof(buf));  // clear the buffer
                     }
                 }  // END handle data from client
-            }  // END got new incoming connection
+            }  // END got new incoming data
         }  // END looping through file descriptors
     }  // END for(;;)--and you thought it would never end!
     return 0;

@@ -1,6 +1,9 @@
+# Default flags (if any)
+CODE_COVERAGE_FLAGS = 
+# CODE_COVERAGE_FLAGS = -fprofile-arcs -ftest-coverage
+
 CXX=g++
 CXXFLAGS=-std=c++2a -g -Wall
-CODE_COVERAGE_FLAGS = -fprofile-arcs -ftest-coverage
 
 PROG=main
 
@@ -14,7 +17,8 @@ run: $(PROG)
 clean:
 	rm -f $(PROG) *.o utils/*.o *.gcno *.gcda *.gcov
 
-coverage: $(PROG)
+coverage: clean
+	make CODE_COVERAGE_FLAGS="-fprofile-arcs -ftest-coverage"
 	./coverage.sh
 	gcov -r main.cpp Graph.cpp TreeOnGraph.cpp MSTSolver.cpp MSTFactory.cpp LFHandler.hpp PipelineHandler.hpp
 	mv *.gcov coverage_res/
@@ -45,3 +49,13 @@ utils/MinHeap.o: utils/MinHeap.cpp utils/MinHeap.hpp
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CXXFLAGS) -c $<
+
+
+# valgrind command
+# memcheck
+# valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
+# valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
+
+# helgrind
+# valgrind --tool=helgrind --log-file=helgrind.log ./main -l
+# valgrind --tool=helgrind ./main -p

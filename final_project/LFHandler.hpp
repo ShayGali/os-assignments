@@ -8,47 +8,17 @@
 #include <vector>
 
 constexpr int MAX_THREADS = 4;
-
 class LeaderFollower {
    private:
-    std::queue<std::function<void()>> tasks;  // FIFO queue
-    std::mutex mutex;                         // Protects tasks
-    std::condition_variable cv;               // Signals a task is available
-    std::vector<std::thread> threads;         // Worker threads
-    bool stop;                                // Signals to worker threads to stop
-
-    /**
-     * will be called by each worker thread
-     * will wait for a task to be available and execute it
-     */
-    void workerThread() {
-        while (true) {
-            std::unique_lock<std::mutex> lock(mutex);  // lock the mutex
-
-            // Wait for a task to be available
-            cv.wait(lock, [this] { return !tasks.empty() || stop; });
-
-            // Check if we should stop
-            if (stop && tasks.empty()) {
-                return;
-            }
-
-            // Leader takes a task
-            auto task = std::move(tasks.front());
-            tasks.pop();
-
-            // Leader becomes a follower
-            lock.unlock();
-
-            // Execute the task
-            task();
-        }
-    }
+    std::queue<std::function<void()>> taskQueue;
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::atomic<bool> stop;
+    std::vector<std::thread> threads;
 
    public:
     LeaderFollower() : stop(false) {
         for (size_t i = 0; i < MAX_THREADS; ++i) {
-            // Create worker threads
             threads.emplace_back(&LeaderFollower::workerThread, this);
         }
     }
@@ -56,63 +26,59 @@ class LeaderFollower {
     ~LeaderFollower() {
         {
             std::unique_lock<std::mutex> lock(mutex);
-            stop = true;  // Signal to worker threads to stop
+            stop.store(true);
+            cv.notify_all();
         }
-        cv.notify_all();  // Wake up all worker threads
-
-        // Wait for all worker threads to finish
         for (auto &thread : threads) {
             thread.join();
         }
     }
 
-    /**
-     * Add a task to the queue and return a future that will be set once the task is complete
-     */
-    template <typename F>
-    auto addTask(F &&task) -> std::future<typename std::result_of<F()>::type> {
-        // Get the return type of the task
-        using ReturnType = typename std::result_of<F()>::type;
+    template <class F, class... Args>
+    auto addTask(F &&f, Args &&...args)
+        -> std::future<typename std::result_of<F(Args...)>::type> {
+        using return_type = typename std::result_of<F(Args...)>::type;
 
-        // Create a promise to set the result of the task
-        auto promise = std::make_shared<std::promise<ReturnType>>();
+        auto task = std::make_shared<std::packaged_task<return_type()>>(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
-        // Get the future from the promise
-        auto future = promise->get_future();
-
-        {  // add the task to the queue
+        std::future<return_type> res = task->get_future();
+        {
             std::unique_lock<std::mutex> lock(mutex);
-            tasks.emplace([promise, task = std::forward<F>(task)]() mutable {
-                try {
-                    if constexpr (std::is_void<ReturnType>::value) {
-                        task();
-                        promise->set_value();
-                    } else {
-                        promise->set_value(task());
-                    }
-                } catch (...) {
-                    promise->set_exception(std::current_exception());
-                }
-            });
+            taskQueue.emplace([task]() { (*task)(); });
+            cv.notify_one();  // Ensure the lock is held when calling notify_one
         }
-        cv.notify_one();  // Wake up one worker thread
-        return future;
+        return res;
     }
 
-    void stop_service() {
-        std::unique_lock<std::mutex> lock(mutex);
-        stop = true;
+   private:
+    void workerThread() {
+        while (!stop.load()) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                cv.wait(lock, [this] { return stop.load() || !taskQueue.empty(); });
+                if (stop.load() && taskQueue.empty()) {
+                    return;
+                }
+                task = std::move(taskQueue.front());
+                taskQueue.pop();
+            }
+            task();
+        }
     }
 };
 
 class LFHandler : public CommandHandler {
    private:
     LeaderFollower lf;  // Leader-Follower pattern
+    std::mutex graph_mutex;
     string cmd_handler(string input, int user_fd);
 
    public:
     LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
-        : CommandHandler(graph_per_user, mst_factory) {}
+        : CommandHandler(graph_per_user, mst_factory) {
+    }
 
     /**
      * Handle the input command
@@ -128,7 +94,6 @@ class LFHandler : public CommandHandler {
     }
 
     void stop() override {
-        lf.stop_service();
     }
 };
 
@@ -141,10 +106,9 @@ string LFHandler::cmd_handler(string input, int user_fd) {
     istringstream iss(input);
     int u, v, w;
 
-    Graph &g = graph_per_user[user_fd].first;
     iss >> command;
 
-    std::cout << "client " << user_fd << " sent: " << input << std::endl;
+    // std::cout << "client " << user_fd << " sent: " << input << std::endl;
 
     try {
         if (command == NEW_GRAPH) {
@@ -159,20 +123,34 @@ string LFHandler::cmd_handler(string input, int user_fd) {
                 ans += "Invalid input - expected format: u v w\n";
                 return ans;
             }
-            g.addEdge(u - 1, v - 1, w);
-            g.addEdge(v - 1, u - 1, w);
+            {
+                std::lock_guard<std::mutex> lock(graph_mutex);
+                Graph &g = graph_per_user[user_fd].first;
+                g.addEdge(u - 1, v - 1, w);
+                g.addEdge(v - 1, u - 1, w);
+            }
 
         } else if (command == REMOVE_EDGE) {
             if (!(iss >> u >> v)) {
                 ans += "Invalid input - expected u and v\n";
                 return ans;
             }
-            g.removeEdge(u - 1, v - 1);
-            g.removeEdge(v - 1, u - 1);
+            {
+                std::lock_guard<std::mutex> lock(graph_mutex);
+                Graph &g = graph_per_user[user_fd].first;
+                g.removeEdge(u - 1, v - 1);
+                g.removeEdge(v - 1, u - 1);
+            }
         } else if (command == MST_PRIME || command == MST_KRUSKAL) {
             MSTSolver *solver = mst_factory.createMSTSolver(command);
-            TreeOnGraph mst = solver->getMST(g);
-            graph_per_user[user_fd].second = mst;
+            TreeOnGraph mst;
+            {
+                std::lock_guard<std::mutex> lock(graph_mutex);
+                Graph &g = graph_per_user[user_fd].first;
+                mst = solver->getMST(g);
+                graph_per_user[user_fd].second = mst;
+            }
+
             ans += "MST: \n" + mst.toString();
 
             // do calculations
@@ -186,7 +164,10 @@ string LFHandler::cmd_handler(string input, int user_fd) {
             ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
             delete solver;
         } else if (command == PRINT_GRAPH) {
-            ans = g.toString();
+            {
+                std::lock_guard<std::mutex> lock(graph_mutex);
+                ans += graph_per_user[user_fd].first.toString();
+            }
         } else {
             ans += "Invalid command";
         }
@@ -199,7 +180,7 @@ string LFHandler::cmd_handler(string input, int user_fd) {
         ans += "\n";
     }
 
-    std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
+    // std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
 
     return ans;
 }
