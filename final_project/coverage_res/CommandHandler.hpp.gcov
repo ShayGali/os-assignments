@@ -42,14 +42,14 @@ _ZN14CommandHandlerD2Ev:
         -:   34:     * expected input: n m u1 v1 w1 u2 v2 w2 ... um vm wm
         -:   35:     */
        10:   36:    string init_graph(string input, int user_fd) {
-       20:   37:        istringstream iss(input);
+       10:   37:        istringstream iss(input);
        10:   38:        char buf[BUF_SIZE] = {0};
-       36:   39:        string first, second, third, send_data;
+       10:   39:        string first, second, third, send_data;
         -:   40:        int n, m, i, u, v, w, nbytes;
        10:   41:        if (!(iss >> n >> m)) {
         2:   42:            throw std::invalid_argument("Invalid input - expected n and m");
         -:   43:        }
-       16:   44:        Graph temp(n);
+        8:   44:        Graph temp(n);
         8:   45:        i = 0;
        22:   46:        while (i < m) {
        20:   47:            if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
@@ -84,5 +84,5 @@ _ZN14CommandHandlerD2Ev:
         2:   76:        graph_per_user[user_fd].first = temp;
         -:   77:        
         4:   78:        return send_data;
-        -:   79:    }
+       48:   79:    }
         -:   80:};

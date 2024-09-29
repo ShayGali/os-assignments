@@ -3,118 +3,119 @@
         -:    2:
         -:    3:#include <climits>
         -:    4:#include <queue>
-        -:    5:
-        -:    6:using std::queue;
-        -:    7:
-        4:    8:TreeOnGraph::TreeOnGraph(Graph& T) : mst(T) {
-        4:    9:    allPairs = getAllPairs();
-        -:   10:
-        4:   11:    size_t n = mst.getAdjMat().size();
-        -:   12:
-        -:   13:    // check if the graph is connected
-       16:   14:    for (size_t i = 0; i < n; i++) {
-       48:   15:        for (size_t j = 0; j < n; j++) {
-      36*:   16:            if (!(allPairs[i][j] > 0 || (i == j && allPairs[i][j] == 0))) {
-    #####:   17:                throw std::runtime_error("vertices: " + std::to_string(i) + " and " + std::to_string(j) + " are not connected");
-        -:   18:            }
-        -:   19:        }
-        -:   20:    }
-        -:   21:
-        -:   22:    // Cheking ot T that we have n-1 edges
-        4:   23:    if (mst.getEdges().size() != n - 1) {
-    #####:   24:        throw std::runtime_error("The graph is not a tree");
-        -:   25:    }
-        4:   26:}
-        -:   27:
-        4:   28:int TreeOnGraph::getWeight() {
-        4:   29:    int weight = 0;
-        4:   30:    vector<vector<int>> mat = mst.getAdjMat();
-       16:   31:    for (size_t i = 0; i < mat.size(); i++) {
-       24:   32:        for (size_t j = i + 1; j < mat.size(); j++) {
-       12:   33:            if (mat[i][j] != NO_EDGE) {
-        8:   34:                weight += mat[i][j];
-        -:   35:            }
-        -:   36:        }
-        -:   37:    }
-        8:   38:    return weight;
-        -:   39:}
-        -:   40:
-        4:   41:int TreeOnGraph::longestDist() {
-        4:   42:    int longest = 0;
-       16:   43:    for (size_t i = 0; i < allPairs.size(); i++) {
-       24:   44:        for (size_t j = i + 1; j < allPairs.size(); j++) {
-       12:   45:            if (allPairs[i][j] > longest) {
-        4:   46:                longest = allPairs[i][j];
-        -:   47:            }
-        -:   48:        }
-        -:   49:    }
-        4:   50:    return longest;
-        -:   51:}
-        -:   52:
-        4:   53:int TreeOnGraph::avgDist() {
-        4:   54:    int sum = 0;
-       16:   55:    for (size_t i = 0; i < allPairs.size(); i++) {
-       36:   56:        for (size_t j = i; j < allPairs.size(); j++) {
-       24:   57:            sum += allPairs[i][j];
-        -:   58:        }
-        -:   59:    }
-        4:   60:    return sum / (allPairs.size() * (allPairs.size() - 1) / 2);
-        -:   61:}
-        -:   62:
-        4:   63:int TreeOnGraph::shortestDist() {
-        4:   64:    int shortest = INT_MAX;
-        4:   65:    vector<vector<int>> mat = mst.getAdjMat();
-       16:   66:    for (size_t i = 0; i < mat.size(); i++) {
-       24:   67:        for (size_t j = i + 1; j < mat.size(); j++) {
-       12:   68:            if (mat[i][j] != NO_EDGE && mat[i][j] < shortest) {
-        8:   69:                shortest = mat[i][j];
-        -:   70:            }
-        -:   71:        }
-        -:   72:    }
-        8:   73:    return shortest;
-        -:   74:}
-        -:   75:
-        4:   76:string TreeOnGraph::toString() {
-        4:   77:    string str = "";
-        8:   78:    vector<vector<int>> mat = mst.getAdjMat();
-       16:   79:    for (size_t i = 0; i < mat.size(); i++) {
-       24:   80:        for (size_t j = i + 1; j < mat.size(); j++) {
-       12:   81:            if (mat[i][j] != NO_EDGE) {
-        8:   82:                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(mat[i][j]) + "\n";
-        -:   83:            }
-        -:   84:        }
-        -:   85:    }
-        8:   86:    return str;
-        -:   87:}
-        -:   88:
-        4:   89:vector<vector<int>> TreeOnGraph::getAllPairs() {
-        8:   90:    vector<vector<int>> mat = mst.getAdjMat();
-        4:   91:    vector<vector<int>> allPairs;
-       16:   92:    for (size_t i = 0; i < mat.size(); i++) {
-       24:   93:        vector<int> distances = getDistances(i);
-       12:   94:        allPairs.push_back(distances);
-        -:   95:    }
-       16:   96:    for (size_t i = 0; i < allPairs.size(); i++) {
-       12:   97:        allPairs[i][i] = 0;
-        -:   98:    }
-        8:   99:    return allPairs;
-        -:  100:}
-        -:  101:
-       12:  102:vector<int> TreeOnGraph::getDistances(int root) {
-       24:  103:    vector<vector<int>> mat = mst.getAdjMat();
-       12:  104:    vector<int> distances(mat.size(), -1);
-       12:  105:    distances[root] = 0;
-       24:  106:    queue<int> q;
-       12:  107:    q.push(root);
-       48:  108:    while (!q.empty()) {
-       36:  109:        int u = q.front();
-       36:  110:        q.pop();
-      144:  111:        for (size_t v = 0; v < mat.size(); v++) {
-      108:  112:            if (mat[u][v] != NO_EDGE && distances[v] == NO_EDGE) {
-       24:  113:                distances[v] = distances[u] + mat[u][v];
-       24:  114:                q.push(v);
-        -:  115:            }
-        -:  116:        }
-        -:  117:    }
-       24:  118:    return distances;
-        -:  119:}
+        -:    5:#include <stdexcept>
+        -:    6:
+        -:    7:using std::queue;
+        -:    8:
+        4:    9:TreeOnGraph::TreeOnGraph(Graph& T) : mst(T) {
+        4:   10:    allPairs = getAllPairs();
+        -:   11:
+        4:   12:    size_t n = mst.getAdjMat().size();
+        -:   13:
+        -:   14:    // check if the graph is connected
+       16:   15:    for (size_t i = 0; i < n; i++) {
+       48:   16:        for (size_t j = 0; j < n; j++) {
+      36*:   17:            if (!(allPairs[i][j] > 0 || (i == j && allPairs[i][j] == 0))) {
+    #####:   18:                throw std::runtime_error("vertices: " + std::to_string(i) + " and " + std::to_string(j) + " are not connected");
+        -:   19:            }
+        -:   20:        }
+        -:   21:    }
+        -:   22:
+        -:   23:    // Cheking ot T that we have n-1 edges
+        4:   24:    if (mst.getEdges().size() != n - 1) {
+    #####:   25:        throw std::runtime_error("The graph is not a tree");
+        -:   26:    }
+        4:   27:}
+        -:   28:
+        4:   29:int TreeOnGraph::getWeight() {
+        4:   30:    int weight = 0;
+        4:   31:    vector<vector<int>> mat = mst.getAdjMat();
+       16:   32:    for (size_t i = 0; i < mat.size(); i++) {
+       24:   33:        for (size_t j = i + 1; j < mat.size(); j++) {
+       12:   34:            if (mat[i][j] != NO_EDGE) {
+        8:   35:                weight += mat[i][j];
+        -:   36:            }
+        -:   37:        }
+        -:   38:    }
+        4:   39:    return weight;
+        4:   40:}
+        -:   41:
+        4:   42:int TreeOnGraph::longestDist() {
+        4:   43:    int longest = 0;
+       16:   44:    for (size_t i = 0; i < allPairs.size(); i++) {
+       24:   45:        for (size_t j = i + 1; j < allPairs.size(); j++) {
+       12:   46:            if (allPairs[i][j] > longest) {
+        4:   47:                longest = allPairs[i][j];
+        -:   48:            }
+        -:   49:        }
+        -:   50:    }
+        4:   51:    return longest;
+        -:   52:}
+        -:   53:
+        4:   54:int TreeOnGraph::avgDist() {
+        4:   55:    int sum = 0;
+       16:   56:    for (size_t i = 0; i < allPairs.size(); i++) {
+       36:   57:        for (size_t j = i; j < allPairs.size(); j++) {
+       24:   58:            sum += allPairs[i][j];
+        -:   59:        }
+        -:   60:    }
+        4:   61:    return sum / (allPairs.size() * (allPairs.size() - 1) / 2);
+        -:   62:}
+        -:   63:
+        4:   64:int TreeOnGraph::shortestDist() {
+        4:   65:    int shortest = INT_MAX;
+        4:   66:    vector<vector<int>> mat = mst.getAdjMat();
+       16:   67:    for (size_t i = 0; i < mat.size(); i++) {
+       24:   68:        for (size_t j = i + 1; j < mat.size(); j++) {
+       12:   69:            if (mat[i][j] != NO_EDGE && mat[i][j] < shortest) {
+        8:   70:                shortest = mat[i][j];
+        -:   71:            }
+        -:   72:        }
+        -:   73:    }
+        4:   74:    return shortest;
+        4:   75:}
+        -:   76:
+        4:   77:string TreeOnGraph::toString() {
+        4:   78:    string str = "";
+        4:   79:    vector<vector<int>> mat = mst.getAdjMat();
+       16:   80:    for (size_t i = 0; i < mat.size(); i++) {
+       24:   81:        for (size_t j = i + 1; j < mat.size(); j++) {
+       12:   82:            if (mat[i][j] != NO_EDGE) {
+        8:   83:                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(mat[i][j]) + "\n";
+        -:   84:            }
+        -:   85:        }
+        -:   86:    }
+        8:   87:    return str;
+        4:   88:}
+        -:   89:
+        4:   90:vector<vector<int>> TreeOnGraph::getAllPairs() {
+        4:   91:    vector<vector<int>> mat = mst.getAdjMat();
+        4:   92:    vector<vector<int>> allPairs;
+       16:   93:    for (size_t i = 0; i < mat.size(); i++) {
+       12:   94:        vector<int> distances = getDistances(i);
+       12:   95:        allPairs.push_back(distances);
+       12:   96:    }
+       16:   97:    for (size_t i = 0; i < allPairs.size(); i++) {
+       12:   98:        allPairs[i][i] = 0;
+        -:   99:    }
+        8:  100:    return allPairs;
+        4:  101:}
+        -:  102:
+       12:  103:vector<int> TreeOnGraph::getDistances(int root) {
+       12:  104:    vector<vector<int>> mat = mst.getAdjMat();
+       12:  105:    vector<int> distances(mat.size(), -1);
+       12:  106:    distances[root] = 0;
+       12:  107:    queue<int> q;
+       12:  108:    q.push(root);
+       48:  109:    while (!q.empty()) {
+       36:  110:        int u = q.front();
+       36:  111:        q.pop();
+      144:  112:        for (size_t v = 0; v < mat.size(); v++) {
+      108:  113:            if (mat[u][v] != NO_EDGE && distances[v] == NO_EDGE) {
+       24:  114:                distances[v] = distances[u] + mat[u][v];
+       24:  115:                q.push(v);
+        -:  116:            }
+        -:  117:        }
+        -:  118:    }
+       24:  119:    return distances;
+       12:  120:}

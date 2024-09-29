@@ -165,8 +165,8 @@
         -:  164:    fd_set read_fds;  // temp file descriptor list for select()
         -:  165:    int fdmax;        // maximum file descriptor number
         -:  166:
-        3:  167:    FD_ZERO(&master);  // clear the master and temp sets
-        3:  168:    FD_ZERO(&read_fds);
+       51:  167:    FD_ZERO(&master);  // clear the master and temp sets
+       51:  168:    FD_ZERO(&read_fds);
         -:  169:
         -:  170:    // add the listener to the master set
         3:  171:    FD_SET(listener, &master);

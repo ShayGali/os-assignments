@@ -40,12 +40,12 @@
         -:   39:    condition_variable cv;          // condition variable to notify the thread that there is a new task
         -:   40:    bool stop = false;              // flag to stop the thread
         -:   41:
-       39:   42:    void run() {
+       40:   42:    void run() {
         -:   43:        while (true) {
-       39:   44:            function<void()> task;
+       40:   44:            function<void()> task;
         -:   45:            {
-       38:   46:                unique_lock<mutex> lock(m);
-      117:   47:                cv.wait(lock, [this] { return !tasks.empty() || stop; });
+       40:   46:                unique_lock<mutex> lock(m);
+      119:   47:                cv.wait(lock, [this] { return !tasks.empty() || stop; });
        40:   48:                if (stop && tasks.empty()) {
        36:   49:                    return;
         -:   50:                }
@@ -53,11 +53,11 @@
        22:   52:                    task = tasks.front();
        22:   53:                    tasks.pop();
         -:   54:                }
-        -:   55:            }
+       40:   55:            }
        22:   56:            if (task) {
        22:   57:                task();
         -:   58:            }
-       22:   59:        }
+       62:   59:        }
         -:   60:    }
         -:   61:
         -:   62:   public:
@@ -67,10 +67,10 @@
         -:   66:
        18:   67:    ~ActiveObject() {
         -:   68:        {
-       36:   69:            unique_lock<mutex> lock(m);
+       18:   69:            unique_lock<mutex> lock(m);
        18:   70:            stop = true;
-       18:   71:            cv.notify_all();  // Move notify_all() inside the lock
-        -:   72:        }
+       18:   71:        }
+       18:   72:        cv.notify_all();
        18:   73:        my_thread.join();
        18:   74:    }
         -:   75:
@@ -80,15 +80,15 @@
         -:   79:    template <typename F, typename... Args>
        22:   80:    auto invoke(F &&f, Args &&...args) -> future<decltype(f(args...))> {
         -:   81:        using return_type = decltype(f(args...));  // get the return type of the function
-       44:   82:        auto task = make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+       22:   82:        auto task = make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
        22:   83:        auto result = task->get_future();
         -:   84:        {
        22:   85:            unique_lock<mutex> lock(m);
        44:   86:            tasks.emplace([task]() { (*task)(); });  // add the task to the queue
-        -:   87:        }
+       22:   87:        }
        22:   88:        cv.notify_one();  // notify the thread that there is a new task
        44:   89:        return result;
-        -:   90:    }
+       22:   90:    }
         -:   91:};
         -:   92:
         -:   93:class PipelineStage : public ActiveObject {
@@ -125,7 +125,7 @@
         -:  124:    shared_ptr<PipelineStage> print_graph_stage;
         -:  125:
         3:  126:    string add_edge(string input, int user_fd) {
-        5:  127:        istringstream iss(input);
+        3:  127:        istringstream iss(input);
         -:  128:        int u, v, w;
         3:  129:        if (!(iss >> u >> v >> w)) {
         1:  130:            throw invalid_argument("Invalid input - expected u, v, and w");
@@ -142,10 +142,10 @@
         1:  141:        graph_per_user[user_fd].first.addEdge(v - 1, u - 1, w);
         -:  142:
         2:  143:        return "edge added\n";
-        -:  144:    }
+        3:  144:    }
         -:  145:
         3:  146:    string remove_edge(string input, int user_fd) {
-        5:  147:        istringstream iss(input);
+        3:  147:        istringstream iss(input);
         -:  148:        int u, v;
         3:  149:        if (!(iss >> u >> v)) {
         1:  150:            throw invalid_argument("Invalid input - expected u and v");
@@ -158,15 +158,15 @@
         1:  157:        graph_per_user[user_fd].first.removeEdge(v - 1, u - 1);
         -:  158:
         2:  159:        return "edge removed\n";
-        -:  160:    }
+        3:  160:    }
         -:  161:
         2:  162:    string mst_init(string input, int user_fd) {
         2:  163:        MSTSolver *solver = mst_factory.createMSTSolver(input);
-        4:  164:        TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
+        2:  164:        TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
         2:  165:        graph_per_user[user_fd].second = mst;
         2:  166:        delete solver;
         4:  167:        return mst.toString();
-        -:  168:    }
+        2:  168:    }
         -:  169:
         2:  170:    string mst_weight(string input, int user_fd) {
         4:  171:        return input + "Weight: " + to_string(graph_per_user[user_fd].second.getWeight()) + "\n";
@@ -201,8 +201,8 @@
         -:  200:
        16:  201:    string handle(string input, int user_fd) override {
        16:  202:        string ans = "Got input: " + input;
-       32:  203:        istringstream iss(input);
-       32:  204:        string command;
+       16:  203:        istringstream iss(input);
+       16:  204:        string command;
        16:  205:        iss >> command;
         -:  206:
        16:  207:        std::cout << "client " << user_fd << " sent: " << input << std::endl;
@@ -226,7 +226,7 @@
         -:  225:            }
         8:  226:        } catch (const invalid_argument &e) {
         8:  227:            ans += "Error: " + string(e.what()) + '\n';
-        -:  228:        }
+        8:  228:        }
         -:  229:
        16:  230:        if (ans.back() != '\n') {
         2:  231:            ans += '\n';
@@ -235,7 +235,7 @@
        16:  234:        std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
         -:  235:
        32:  236:        return ans;
-        -:  237:    }
+       16:  237:    }
         -:  238:
         1:  239:    void stop() override {}  // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called
         -:  240:};

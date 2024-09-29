@@ -15,7 +15,7 @@
         -:   14:    vector<vector<int>> allPairs;
         -:   15:
         -:   16:   public:
-       14:   17:    TreeOnGraph() = default;
+       12:   17:    TreeOnGraph() = default;
         -:   18:    TreeOnGraph(Graph& T);
         -:   19:    int getWeight();     // Total weight of the MST
         -:   20:    int longestDist();   // Longest distance between two vertices

@@ -25,12 +25,12 @@
     #####:   24:        return TreeOnGraph(graph);
         -:   25:    }
         -:   26:
-        4:   27:    UnionFind uf(graph.V());
+        2:   27:    UnionFind uf(graph.V());
         -:   28:    // vector<pair<int, int>> mst_edges;
-        4:   29:    Graph mst(graph.V());
+        2:   29:    Graph mst(graph.V());
         -:   30:
         -:   31:    // add the edges to a vector of tuples (src, dest, weight)
-        4:   32:    vector<Edge> edges = graph.getEdges();
+        2:   32:    vector<Edge> edges = graph.getEdges();
         -:   33:
         -:   34:    // sort the edges by weight
         2:   35:    sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) {
@@ -48,7 +48,7 @@
         -:   47:    }
         -:   48:
         2:   49:    return TreeOnGraph(mst);
-        -:   50:}
+        2:   50:}
         -:   51:
         -:   52:
         -:   53:
@@ -59,9 +59,9 @@
         -:   58:    }
         -:   59:
         2:   60:    int V = graph.V(); 
-        4:   61:    vector<int> parent(V, -1);
-        4:   62:    vector<int> key(V, INT_MAX);
-        4:   63:    MinHeap minHeap(V);
+        2:   61:    vector<int> parent(V, -1);
+        2:   62:    vector<int> key(V, INT_MAX);
+        2:   63:    MinHeap minHeap(V);
         -:   64:
         2:   65:    key[0] = 0;
         2:   66:    minHeap.insertKey(0, key[0]);
@@ -81,14 +81,14 @@
         6:   80:                parent[v] = u;
         6:   81:                minHeap.decreaseKey(v, key[v]);
         -:   82:            }
-        -:   83:        }
+        6:   83:        }
         -:   84:    }
         -:   85:
-        4:   86:    Graph mst(V);
+        2:   86:    Graph mst(V);
         6:   87:    for (int i = 1; i < V; ++i) {
         4:   88:        mst.addEdge(parent[i], i, key[i]);
         4:   89:        mst.addEdge(i, parent[i], key[i]);
         -:   90:    }
         -:   91:
         2:   92:    return TreeOnGraph(mst);
-        -:   93:}
+        2:   93:}
