@@ -46,7 +46,7 @@ class LeaderFollower {
         {
             std::unique_lock<std::mutex> lock(mutex);
             taskQueue.emplace([task]() { (*task)(); });
-            cv.notify_one();  // Ensure the lock is held when calling notify_one
+            cv.notify_one();  
         }
         return res;
     }
