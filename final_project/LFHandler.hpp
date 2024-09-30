@@ -34,21 +34,10 @@ class LeaderFollower {
         }
     }
 
-    template <class F, class... Args>
-    auto addTask(F &&f, Args &&...args)
-        -> std::future<typename std::result_of<F(Args...)>::type> {
-        using return_type = typename std::result_of<F(Args...)>::type;
-
-        auto task = std::make_shared<std::packaged_task<return_type()>>(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-
-        std::future<return_type> res = task->get_future();
-        {
-            std::unique_lock<std::mutex> lock(mutex);
-            taskQueue.emplace([task]() { (*task)(); });
-            cv.notify_one();  
-        }
-        return res;
+    void addTask(std::function<void()> task) {
+        std::unique_lock<std::mutex> lock(mutex);
+        taskQueue.push(std::move(task));
+        cv.notify_one();
     }
 
    private:
@@ -73,6 +62,7 @@ class LFHandler : public CommandHandler {
    private:
     LeaderFollower lf;  // Leader-Follower pattern
     std::mutex graph_mutex;
+    std::mutex my_mutex;
     string cmd_handler(string input, int user_fd);
 
    public:
@@ -85,12 +75,11 @@ class LFHandler : public CommandHandler {
      * will get a string input and a user file descriptor.
      * add new task to the Leader-Follower pattern
      */
-    string handle(string input, int user_fd) override {
-        auto future = lf.addTask([this, input, user_fd] {
+    void handle(string input, int user_fd, function<void(string)> on_end) override {
+        lf.addTask([this, input, user_fd, on_end]() {
             string ans = cmd_handler(input, user_fd);
-            return ans;
+            on_end(ans);
         });
-        return future.get();  // Wait for the task to complete and get the result
     }
 
     void stop() override {

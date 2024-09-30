@@ -198,7 +198,7 @@ class PipelineHandler : public CommandHandler {
         print_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return this->graph_per_user[user_fd].first.toString(); }, nullptr);
     }
 
-    string handle(string input, int user_fd) override {
+    void handle(string input, int user_fd, function<void(string)> on_end) override {
         string ans = "Got input: " + input;
         istringstream iss(input);
         string command;
@@ -233,7 +233,7 @@ class PipelineHandler : public CommandHandler {
 
         std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
 
-        return ans;
+        on_end(ans);
     }
 
     void stop() override {}  // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called

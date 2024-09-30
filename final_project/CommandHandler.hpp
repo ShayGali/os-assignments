@@ -1,7 +1,6 @@
 #pragma once
 
-#include <sys/socket.h>
-
+#include <functional>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -11,18 +10,16 @@
 #include "TreeOnGraph.hpp"
 #include "client_commands.hpp"
 
+using std::function;
 using std::istringstream;
 using std::map;
 using std::string;
-
-constexpr int BUF_SIZE = 1024;
-
 
 class CommandHandler {
    public:
     CommandHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : graph_per_user(graph_per_user), mst_factory(mst_factory) {}
     virtual ~CommandHandler() = default;
-    virtual string handle(string input, int user_fd) = 0;
+    virtual void handle(string input, int user_fd, function<void(string)> on_end) = 0;
     virtual void stop() = 0;
 
    protected:
@@ -35,9 +32,8 @@ class CommandHandler {
      */
     string init_graph(string input, int user_fd) {
         istringstream iss(input);
-        char buf[BUF_SIZE] = {0};
         string first, second, third, send_data;
-        int n, m, i, u, v, w, nbytes;
+        int n, m, i, u, v, w;
         if (!(iss >> n >> m)) {
             throw std::invalid_argument("Invalid input - expected n and m");
         }
@@ -45,11 +41,7 @@ class CommandHandler {
         i = 0;
         while (i < m) {
             if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-                if ((nbytes = recv(user_fd, buf, sizeof(buf), 0)) <= 0) {
-                    throw std::invalid_argument("Invalid input - you dont send the " + std::to_string(i + 1) + " edge");
-                }
-                send_data += buf;
-                iss = istringstream(buf);
+                throw std::invalid_argument("Invalid input - you dont send the " + std::to_string(i + 1) + " edge");
                 continue;
             }
             // convert string to int
@@ -74,7 +66,7 @@ class CommandHandler {
 
         // if we reach here, we have a valid graph
         graph_per_user[user_fd].first = temp;
-        
+
         return send_data;
     }
 };
