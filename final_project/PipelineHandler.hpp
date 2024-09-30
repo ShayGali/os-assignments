@@ -76,17 +76,10 @@ class ActiveObject {
     /**
      * @brief invoke a function in the active object
      */
-    template <typename F, typename... Args>
-    auto invoke(F &&f, Args &&...args) -> future<decltype(f(args...))> {
-        using return_type = decltype(f(args...));  // get the return type of the function
-        auto task = make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-        auto result = task->get_future();
-        {
-            unique_lock<mutex> lock(m);
-            tasks.emplace([task]() { (*task)(); });  // add the task to the queue
-        }
-        cv.notify_one();  // notify the thread that there is a new task
-        return result;
+    void invoke(function<void()> task) {
+        unique_lock<mutex> lock(m);
+        tasks.push(task);
+        cv.notify_one();
     }
 };
 
@@ -99,13 +92,14 @@ class PipelineStage : public ActiveObject {
     PipelineStage(function<string(string, int)> task, shared_ptr<PipelineStage> next_stage)
         : task(std::move(task)), next_stage(next_stage) {}
 
-    future<string> process(string input, int user_fd) {
-        return invoke([this, input, user_fd] {
+    void process(string input, int user_fd, function<void(string)> on_end) {
+        invoke([this, input, user_fd, on_end] {
             string output = (task(input, user_fd));
-            if (next_stage != nullptr) {                              // if there is a next stage
-                output = next_stage->process(output, user_fd).get();  // process the output in the next stage
+            if (next_stage != nullptr) {                       // if there is a next stage
+                next_stage->process(output, user_fd, on_end);  // process the output in the next stage
+            } else {
+                on_end(output);
             }
-            return output;
         });
     }
 };
@@ -137,8 +131,10 @@ class PipelineHandler : public CommandHandler {
             throw invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + to_string(w));
         }
 
+        graph_mutex.lock();
         graph_per_user[user_fd].first.addEdge(u - 1, v - 1, w);
         graph_per_user[user_fd].first.addEdge(v - 1, u - 1, w);
+        graph_mutex.unlock();
 
         return "edge added\n";
     }
@@ -153,34 +149,55 @@ class PipelineHandler : public CommandHandler {
             throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(graph_per_user[user_fd].first.V()) + " and u != v. Got: " + to_string(u) + " " + to_string(v));
         }
 
+        graph_mutex.lock();
         graph_per_user[user_fd].first.removeEdge(u - 1, v - 1);
         graph_per_user[user_fd].first.removeEdge(v - 1, u - 1);
+        graph_mutex.unlock();
 
         return "edge removed\n";
     }
 
     string mst_init(string input, int user_fd) {
         MSTSolver *solver = mst_factory.createMSTSolver(input);
+        graph_mutex.lock();
         TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
         graph_per_user[user_fd].second = mst;
+        graph_mutex.unlock();
         delete solver;
         return mst.toString();
     }
 
     string mst_weight(string input, int user_fd) {
-        return input + "Weight: " + to_string(graph_per_user[user_fd].second.getWeight()) + "\n";
+        graph_mutex.lock();
+        // copy the mst
+        TreeOnGraph mst = graph_per_user[user_fd].second;
+        graph_mutex.unlock();
+
+        return input + "Weight: " + to_string(mst.getWeight()) + "\n";
     }
 
     string mst_longest(string input, int user_fd) {
-        return input + "Longest distance: " + to_string(graph_per_user[user_fd].second.longestDist()) + "\n";
+        graph_mutex.lock();
+        // copy the mst
+        TreeOnGraph mst = graph_per_user[user_fd].second;
+        graph_mutex.unlock();
+        return input + "Longest distance: " + to_string(mst.longestDist()) + "\n";
     }
 
     string mst_shortest(string input, int user_fd) {
-        return input + "Shortest distance: " + to_string(graph_per_user[user_fd].second.shortestDist()) + "\n";
+        graph_mutex.lock();
+        // copy the mst
+        TreeOnGraph mst = graph_per_user[user_fd].second;
+        graph_mutex.unlock();
+        return input + "Shortest distance: " + to_string(mst.shortestDist()) + "\n";
     }
 
     string mst_avg(string input, int user_fd) {
-        return input + "Average distance: " + to_string(graph_per_user[user_fd].second.avgDist()) + "\n";
+        graph_mutex.lock();
+        // copy the mst
+        TreeOnGraph mst = graph_per_user[user_fd].second;
+        graph_mutex.unlock();
+        return input + "Average distance: " + to_string(mst.avgDist()) + "\n";
     }
 
    public:
@@ -199,41 +216,29 @@ class PipelineHandler : public CommandHandler {
     }
 
     void handle(string input, int user_fd, function<void(string)> on_end) override {
-        string ans = "Got input: " + input;
         istringstream iss(input);
         string command;
         iss >> command;
-
-        std::cout << "client " << user_fd << " sent: " << input << std::endl;
 
         // update the input to be the rest of the input
         getline(iss, input);
 
         try {
             if (command == NEW_GRAPH) {
-                ans += new_graph_stage->process(input, user_fd).get();
+                new_graph_stage->process(input, user_fd, on_end);
             } else if (command == ADD_EDGE) {
-                ans += add_edge_stage->process(input, user_fd).get();
+                add_edge_stage->process(input, user_fd, on_end);
             } else if (command == REMOVE_EDGE) {
-                ans += remove_edge_stage->process(input, user_fd).get();
+                remove_edge_stage->process(input, user_fd, on_end);
             } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-                ans += mst_init_stage->process(command, user_fd).get();
+                mst_init_stage->process(command, user_fd, on_end);
             } else if (command == PRINT_GRAPH) {
-                ans += print_graph_stage->process(input, user_fd).get();
+                print_graph_stage->process(input, user_fd, on_end);
             } else {
-                ans += "Invalid command";
+                on_end("Invalid command\n");
             }
         } catch (const invalid_argument &e) {
-            ans += "Error: " + string(e.what()) + '\n';
+            on_end("Error: " + string(e.what()) + '\n');
         }
-
-        if (ans.back() != '\n') {
-            ans += '\n';
-        }
-
-        std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
-
-        on_end(ans);
     }
-
 };

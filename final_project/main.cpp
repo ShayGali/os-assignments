@@ -109,8 +109,8 @@ void accept_connection(int listener, fd_set &master, int &fdmax) {
             fdmax = newfd;
         }
 
-        char remoteIP[INET6_ADDRSTRLEN];
-        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        // char remoteIP[INET6_ADDRSTRLEN];
+        // const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
         // cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
     }
 }
@@ -203,8 +203,6 @@ int main(int argc, char *argv[]) {
 
                         if (string(buf).starts_with("kill")) {
                             // cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
-                            // stop the handler
-                            handler->stop();
                             // close all the sockets
                             for (int j = 0; j <= fdmax; j++) {
                                 if (FD_ISSET(j, &master)) {

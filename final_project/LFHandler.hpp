@@ -2,7 +2,6 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
-#include <mutex>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -61,8 +60,7 @@ class LeaderFollower {
 class LFHandler : public CommandHandler {
    private:
     LeaderFollower lf;  // Leader-Follower pattern
-    std::mutex graph_mutex;
-    std::mutex my_mutex;
+    
     string cmd_handler(string input, int user_fd);
 
    public:
@@ -81,7 +79,6 @@ class LFHandler : public CommandHandler {
             on_end(ans);
         });
     }
-
 };
 
 /**
@@ -102,8 +99,6 @@ string LFHandler::cmd_handler(string input, int user_fd) {
             string remaining_input;
             getline(iss, remaining_input);
             ans += init_graph(remaining_input, user_fd);
-            ans += "New graph created";
-
         } else if (command == ADD_EDGE) {
             // get u and v from the input
             if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error

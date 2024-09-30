@@ -3,6 +3,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <sstream>
 
 #include "Graph.hpp"
@@ -24,6 +25,7 @@ class CommandHandler {
    protected:
     map<int, pair<Graph, TreeOnGraph>> &graph_per_user;
     MSTFactory &mst_factory;
+    std::mutex graph_mutex;
 
     /**
      * @brief Initialize the graph with the given number of vertices and edges
@@ -64,8 +66,9 @@ class CommandHandler {
         }
 
         // if we reach here, we have a valid graph
+        graph_mutex.lock();
         graph_per_user[user_fd].first = temp;
-
-        return send_data;
+        graph_mutex.unlock();
+        return "New graph created\n";
     }
 };
