@@ -1,0 +1,12 @@
+~~~ valgrind command ~~~
+    ~ memcheck
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
+
+    ~ helgrind
+        valgrind --tool=helgrind --log-file=helgrind.log ./main -l
+        valgrind --tool=helgrind ./main -p
+
+    ~ callgrind
+        valgrind --tool=callgrind ./main -l
+        kcachegrind callgrind.out.<pid>

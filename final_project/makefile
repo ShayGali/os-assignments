@@ -49,13 +49,3 @@ utils/MinHeap.o: utils/MinHeap.cpp utils/MinHeap.hpp
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CXXFLAGS) -c $<
-
-
-# valgrind command
-# memcheck
-# valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
-# valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main -l
-
-# helgrind
-# valgrind --tool=helgrind --log-file=helgrind.log ./main -l
-# valgrind --tool=helgrind ./main -p
