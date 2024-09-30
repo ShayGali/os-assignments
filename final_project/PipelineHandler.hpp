@@ -236,5 +236,4 @@ class PipelineHandler : public CommandHandler {
         on_end(ans);
     }
 
-    void stop() override {}  // NO NEED TO IMPLEMENT  - stop is implemented in the destructor of the ActiveObject , sherd_ptr will be deleted and the destructor will be called
 };

@@ -82,8 +82,6 @@ class LFHandler : public CommandHandler {
         });
     }
 
-    void stop() override {
-    }
 };
 
 /**
