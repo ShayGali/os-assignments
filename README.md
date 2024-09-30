@@ -5,7 +5,9 @@ This repository contains the assignments of Operating Systems course.
 
 ## Assignments
 
-### [Assignment 1](ex1)
+### Assignment 1
+
+You can find the assignment [here](ex1).
 
 In this assignment we start using `c` language and `linux` os in advanced way.
 
@@ -17,7 +19,9 @@ In addition, we learned about `gcov` & `gprof`, and how to use `man` to read the
 * [Shay Gali](https://github.com/ShayGali)
 * [Hagay Cohen](https://github.com/hagaycohen2)
 
-### [Assignment 2](ex2)
+### Assignment 2
+
+You can find the assignment [here](ex2).
 
 In this assignment we implement a copy of the `nc` (netcat) program.
 
@@ -30,7 +34,9 @@ For full details, see the [assignment](ex2/README.md) description.
 * [Hagay Cohen](https://github.com/hagaycohen2)
 
 
-### [Assignment 3](ex3)
+### Assignment 3
+
+You can find the assignment [here](ex3).
 
 In this assignment we learn about threads, and the `Reactor` & `Proactor` design patterns.
 
@@ -41,7 +47,9 @@ For full details, see the [assignment](ex3/README.md) description.
 * [Hagay Cohen](https://github.com/hagaycohen2)
 
 
-### [Assignment 4](ex4)
+### Assignment 4
+
+You can find the assignment [here](ex4).
 
 In this assignment we learn how to use `valgrind` in the right way. we learn about `memcheck`, `helgrind`, `callgrind`.
 
@@ -71,7 +79,9 @@ We implement two design patterns:
 * [Hagay Cohen](https://github.com/hagaycohen2)
 * [Chanan Helman](https://github.com/chanan-hash)
 
-### [Final Project](final_project)
+### Final Project
+
+You can find the final project [here](final_project).
 
 In this project we implement a server that can handle multiple clients at the same time, that use the `Leader Follower` & `Pipeline` design patterns.
 
