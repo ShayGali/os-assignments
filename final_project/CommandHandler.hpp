@@ -21,6 +21,7 @@ class CommandHandler {
     CommandHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory) : graph_per_user(graph_per_user), mst_factory(mst_factory) {}
     virtual ~CommandHandler() = default;
     virtual void handle(string input, int user_fd, function<void(string)> on_end) = 0;
+    virtual void stop_work() = 0;
 
    protected:
     map<int, pair<Graph, TreeOnGraph>> &graph_per_user;

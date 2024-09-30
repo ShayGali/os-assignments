@@ -9,15 +9,15 @@
 constexpr int MAX_THREADS = 4;
 class LeaderFollower {
    private:
-    std::queue<std::function<void()>> taskQueue;
-    std::mutex mutex;
-    std::condition_variable cv;
-    std::atomic<bool> stop;
-    std::vector<std::thread> threads;
+    std::queue<std::function<void()>> taskQueue;  // queue of tasks that the threads will execute
+    std::mutex mutex;                             // mutex the queue
+    std::condition_variable cv;                   // condition variable to notify the threads that there is a new task or
+    std::atomic<bool> stop;                       // flag to stop the threads
+    std::vector<std::thread> threads;             // vector of threads
 
    public:
     LeaderFollower() : stop(false) {
-        for (size_t i = 0; i < MAX_THREADS; ++i) {
+        for (size_t i = 0; i < MAX_THREADS; ++i) {  // create the threads and run the workerThread function
             threads.emplace_back(&LeaderFollower::workerThread, this);
         }
     }
@@ -34,9 +34,14 @@ class LeaderFollower {
     }
 
     void addTask(std::function<void()> task) {
-        std::unique_lock<std::mutex> lock(mutex);
+        std::unique_lock<std::mutex> lock(mutex);  // add the task to the queue and notify one of the threads
         taskQueue.push(std::move(task));
         cv.notify_one();
+    }
+
+    void stop_work() {
+        stop.store(true);
+        cv.notify_all();
     }
 
    private:
@@ -49,10 +54,10 @@ class LeaderFollower {
                 if (stop.load() && taskQueue.empty()) {
                     return;
                 }
-                task = std::move(taskQueue.front());
-                taskQueue.pop();
+                task = std::move(taskQueue.front());  // get the task from the queue
+                taskQueue.pop();                      // remove the task from the queue
             }
-            task();
+            task();  // execute the task
         }
     }
 };
@@ -60,7 +65,7 @@ class LeaderFollower {
 class LFHandler : public CommandHandler {
    private:
     LeaderFollower lf;  // Leader-Follower pattern
-    
+
     string cmd_handler(string input, int user_fd);
 
    public:
@@ -75,9 +80,13 @@ class LFHandler : public CommandHandler {
      */
     void handle(string input, int user_fd, function<void(string)> on_end) override {
         lf.addTask([this, input, user_fd, on_end]() {
-            string ans = cmd_handler(input, user_fd);
-            on_end(ans);
+            string ans = cmd_handler(input, user_fd);  // handle the command
+            on_end(ans);                               // call the on_end function with the result
         });
+    }
+
+    void stop_work() override {
+        lf.stop_work();
     }
 };
 

@@ -203,6 +203,7 @@ int main(int argc, char *argv[]) {
 
                         if (string(buf).starts_with("kill")) {
                             // cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
+                            handler->stop_work();
                             // close all the sockets
                             for (int j = 0; j <= fdmax; j++) {
                                 if (FD_ISSET(j, &master)) {

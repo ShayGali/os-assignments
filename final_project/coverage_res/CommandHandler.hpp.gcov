@@ -29,53 +29,54 @@ _ZN14CommandHandlerD2Ev:
         4:   22:    virtual ~CommandHandler() = default;
 ------------------
         -:   23:    virtual void handle(string input, int user_fd, function<void(string)> on_end) = 0;
-        -:   24:
-        -:   25:   protected:
-        -:   26:    map<int, pair<Graph, TreeOnGraph>> &graph_per_user;
-        -:   27:    MSTFactory &mst_factory;
-        -:   28:    std::mutex graph_mutex;
-        -:   29:
-        -:   30:    /**
-        -:   31:     * @brief Initialize the graph with the given number of vertices and edges
-        -:   32:     * expected input: n m u1 v1 w1 u2 v2 w2 ... um vm wm
-        -:   33:     */
-        5:   34:    string init_graph(string input, int user_fd) {
-       10:   35:        istringstream iss(input);
-       22:   36:        string first, second, third, send_data;
-        -:   37:        int n, m, i, u, v, w;
-        5:   38:        if (!(iss >> n >> m)) {
-        1:   39:            throw std::invalid_argument("Invalid input - expected n and m");
-        -:   40:        }
-        7:   41:        Graph temp(n);
-        4:   42:        i = 0;
-        8:   43:        while (i < m) {
-        7:   44:            if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
-        1:   45:                throw std::invalid_argument("Invalid input - you dont send the " + std::to_string(i + 1) + " edge");
-        -:   46:            }
-        -:   47:            // convert string to int
-        6:   48:            u = stoi(first);
-        6:   49:            v = stoi(second);
-        6:   50:            w = stoi(third);
-        -:   51:
-        -:   52:            // check if u and v are valid
-        6:   53:            if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
-        1:   54:                throw std::invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + std::to_string(n) + " and u != v. Got: " + first + " " + second);
-        -:   55:            }
-        -:   56:
-        5:   57:            if (w <= 0) {
-        1:   58:                throw std::invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + third);
-        -:   59:            }
-        -:   60:
-        -:   61:            // add edge to the graph
-        4:   62:            temp.addEdge(u - 1, v - 1, w);
-        4:   63:            temp.addEdge(v - 1, u - 1, w);
-        4:   64:            i++;
-        -:   65:        }
-        -:   66:
-        -:   67:        // if we reach here, we have a valid graph
-        1:   68:        graph_mutex.lock();
-        1:   69:        graph_per_user[user_fd].first = temp;
-        1:   70:        graph_mutex.unlock();
-        2:   71:        return "New graph created\n";
-        -:   72:    }
-        -:   73:};
+        -:   24:    virtual void stop_work() = 0;
+        -:   25:
+        -:   26:   protected:
+        -:   27:    map<int, pair<Graph, TreeOnGraph>> &graph_per_user;
+        -:   28:    MSTFactory &mst_factory;
+        -:   29:    std::mutex graph_mutex;
+        -:   30:
+        -:   31:    /**
+        -:   32:     * @brief Initialize the graph with the given number of vertices and edges
+        -:   33:     * expected input: n m u1 v1 w1 u2 v2 w2 ... um vm wm
+        -:   34:     */
+        5:   35:    string init_graph(string input, int user_fd) {
+       10:   36:        istringstream iss(input);
+       22:   37:        string first, second, third, send_data;
+        -:   38:        int n, m, i, u, v, w;
+        5:   39:        if (!(iss >> n >> m)) {
+        1:   40:            throw std::invalid_argument("Invalid input - expected n and m");
+        -:   41:        }
+        7:   42:        Graph temp(n);
+        4:   43:        i = 0;
+        8:   44:        while (i < m) {
+        7:   45:            if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
+        1:   46:                throw std::invalid_argument("Invalid input - you dont send the " + std::to_string(i + 1) + " edge");
+        -:   47:            }
+        -:   48:            // convert string to int
+        6:   49:            u = stoi(first);
+        6:   50:            v = stoi(second);
+        6:   51:            w = stoi(third);
+        -:   52:
+        -:   53:            // check if u and v are valid
+        6:   54:            if (u <= 0 || u > n || v <= 0 || v > n || u == v) {
+        1:   55:                throw std::invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + std::to_string(n) + " and u != v. Got: " + first + " " + second);
+        -:   56:            }
+        -:   57:
+        5:   58:            if (w <= 0) {
+        1:   59:                throw std::invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + third);
+        -:   60:            }
+        -:   61:
+        -:   62:            // add edge to the graph
+        4:   63:            temp.addEdge(u - 1, v - 1, w);
+        4:   64:            temp.addEdge(v - 1, u - 1, w);
+        4:   65:            i++;
+        -:   66:        }
+        -:   67:
+        -:   68:        // if we reach here, we have a valid graph
+        1:   69:        graph_mutex.lock();
+        1:   70:        graph_per_user[user_fd].first = temp;
+        1:   71:        graph_mutex.unlock();
+        2:   72:        return "New graph created\n";
+        -:   73:    }
+        -:   74:};

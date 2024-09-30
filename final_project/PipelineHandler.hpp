@@ -73,6 +73,14 @@ class ActiveObject {
         my_thread.join();
     }
 
+    void stop_work() {
+        {
+            unique_lock<mutex> lock(m);
+            stop = true;
+            cv.notify_all();
+        }
+    }
+
     /**
      * @brief invoke a function in the active object
      */
@@ -230,5 +238,17 @@ class PipelineHandler : public CommandHandler {
         } else {
             on_end("Invalid command\n");
         }
+    }
+
+    void stop_work() override {
+        new_graph_stage->stop_work();
+        add_edge_stage->stop_work();
+        remove_edge_stage->stop_work();
+        mst_init_stage->stop_work();
+        mst_weight_stage->stop_work();
+        mst_longest_stage->stop_work();
+        mst_shortest_stage->stop_work();
+        mst_avg_stage->stop_work();
+        print_graph_stage->stop_work();
     }
 };

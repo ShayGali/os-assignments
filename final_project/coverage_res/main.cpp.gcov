@@ -35,9 +35,9 @@
         -:   34:constexpr int MAX_CLIENT = 10;
         -:   35:
         -:   36:// get sockaddr, IPv4 or IPv6:
-        4:   37:void *get_in_addr(struct sockaddr *sa) {
-        4:   38:    if (sa->sa_family == AF_INET) {
-        4:   39:        return &(((struct sockaddr_in *)sa)->sin_addr);
+    #####:   37:void *get_in_addr(struct sockaddr *sa) {
+    #####:   38:    if (sa->sa_family == AF_INET) {
+    #####:   39:        return &(((struct sockaddr_in *)sa)->sin_addr);
         -:   40:    }
         -:   41:
     #####:   42:    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
@@ -110,9 +110,9 @@
         2:  109:            fdmax = newfd;
         -:  110:        }
         -:  111:
-        -:  112:        char remoteIP[INET6_ADDRSTRLEN];
-        4:  113:        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-        4:  114:        cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
+        -:  112:        // char remoteIP[INET6_ADDRSTRLEN];
+        -:  113:        // const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        -:  114:        // cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
         -:  115:    }
         4:  116:}
         -:  117:
@@ -192,7 +192,7 @@
        20:  191:                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
         -:  192:                        // got error or connection closed by client
         2:  193:                        if (nbytes == 0 || errno == ECONNRESET) {
-        2:  194:                            cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
+        -:  194:                            // cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
         -:  195:                        } else {
     #####:  196:                            perror("recv");
         -:  197:                        }
@@ -203,32 +203,33 @@
        18:  202:                        buf[nbytes] = '\0';
         -:  203:
        18:  204:                        if (string(buf).starts_with("kill")) {
-        2:  205:                            cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
-        -:  206:                            // close all the sockets
-       12:  207:                            for (int j = 0; j <= fdmax; j++) {
-       10:  208:                                if (FD_ISSET(j, &master)) {
-        4:  209:                                    close(j);
-        -:  210:                                }
-        -:  211:                            }
-        -:  212:                            // free the memory
-        2:  213:                            delete handler;
-        -:  214:                            // stop the server
-        2:  215:                            close(listener);
-        2:  216:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
-        2:  217:                            return 0;
-        -:  218:                        }
-       16:  219:                        string input(buf);
-       16:  220:                        handler->handle(input, i, [i, &send_mutex](string ans) {
-       32:  221:                            lock_guard<mutex> lock(send_mutex);
-       16:  222:                            if (send(i, ans.c_str(), ans.size(), 0) == -1) {
-    #####:  223:                                perror("send");
-        -:  224:                            }
-       32:  225:                        });
-       16:  226:                        memset(buf, 0, sizeof(buf));  // clear the buffer
-        -:  227:                    }
-        -:  228:                }  // END handle data from client
-        -:  229:            }  // END got new incoming data
-        -:  230:        }  // END looping through file descriptors
-       22:  231:    }  // END for(;;)--and you thought it would never end!
-        -:  232:    return 0;
-        -:  233:}
+        -:  205:                            // cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
+        2:  206:                            handler->stop_work();
+        -:  207:                            // close all the sockets
+       12:  208:                            for (int j = 0; j <= fdmax; j++) {
+       10:  209:                                if (FD_ISSET(j, &master)) {
+        4:  210:                                    close(j);
+        -:  211:                                }
+        -:  212:                            }
+        -:  213:                            // free the memory
+        2:  214:                            delete handler;
+        -:  215:                            // stop the server
+        2:  216:                            close(listener);
+        2:  217:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
+        2:  218:                            return 0;
+        -:  219:                        }
+       16:  220:                        string input(buf);
+       16:  221:                        handler->handle(input, i, [i, &send_mutex](string ans) {
+       32:  222:                            lock_guard<mutex> lock(send_mutex);
+       16:  223:                            if (send(i, ans.c_str(), ans.size(), 0) == -1) {
+    #####:  224:                                perror("send");
+        -:  225:                            }
+       32:  226:                        });
+       16:  227:                        memset(buf, 0, sizeof(buf));  // clear the buffer
+        -:  228:                    }
+        -:  229:                }  // END handle data from client
+        -:  230:            }  // END got new incoming data
+        -:  231:        }  // END looping through file descriptors
+       22:  232:    }  // END for(;;)--and you thought it would never end!
+        -:  233:    return 0;
+        -:  234:}
