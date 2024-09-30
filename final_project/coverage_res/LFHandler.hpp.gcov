@@ -3,185 +3,167 @@
         -:    2:#include <condition_variable>
         -:    3:#include <functional>
         -:    4:#include <future>
-        -:    5:#include <mutex>
-        -:    6:#include <queue>
-        -:    7:#include <thread>
-        -:    8:#include <vector>
-        -:    9:
-        -:   10:constexpr int MAX_THREADS = 4;
-        -:   11:class LeaderFollower {
-        -:   12:   private:
-        -:   13:    std::queue<std::function<void()>> taskQueue;
-        -:   14:    std::mutex mutex;
-        -:   15:    std::condition_variable cv;
-        -:   16:    std::atomic<bool> stop;
-        -:   17:    std::vector<std::thread> threads;
-        -:   18:
-        -:   19:   public:
-        3:   20:    LeaderFollower() : stop(false) {
-       15:   21:        for (size_t i = 0; i < MAX_THREADS; ++i) {
-       12:   22:            threads.emplace_back(&LeaderFollower::workerThread, this);
-        -:   23:        }
-        3:   24:    }
-        -:   25:
-        3:   26:    ~LeaderFollower() {
-        -:   27:        {
-        6:   28:            std::unique_lock<std::mutex> lock(mutex);
-        3:   29:            stop.store(true);
-        3:   30:            cv.notify_all();
-        -:   31:        }
-       15:   32:        for (auto &thread : threads) {
-       12:   33:            thread.join();
-        -:   34:        }
-        3:   35:    }
-        -:   36:
-        -:   37:    template <class F, class... Args>
-       16:   38:    auto addTask(F &&f, Args &&...args)
-        -:   39:        -> std::future<typename std::result_of<F(Args...)>::type> {
-        -:   40:        using return_type = typename std::result_of<F(Args...)>::type;
+        -:    5:#include <queue>
+        -:    6:#include <thread>
+        -:    7:#include <vector>
+        -:    8:
+        -:    9:constexpr int MAX_THREADS = 4;
+        -:   10:class LeaderFollower {
+        -:   11:   private:
+        -:   12:    std::queue<std::function<void()>> taskQueue;
+        -:   13:    std::mutex mutex;
+        -:   14:    std::condition_variable cv;
+        -:   15:    std::atomic<bool> stop;
+        -:   16:    std::vector<std::thread> threads;
+        -:   17:
+        -:   18:   public:
+        3:   19:    LeaderFollower() : stop(false) {
+       15:   20:        for (size_t i = 0; i < MAX_THREADS; ++i) {
+       12:   21:            threads.emplace_back(&LeaderFollower::workerThread, this);
+        -:   22:        }
+        3:   23:    }
+        -:   24:
+        3:   25:    ~LeaderFollower() {
+        -:   26:        {
+        6:   27:            std::unique_lock<std::mutex> lock(mutex);
+        3:   28:            stop.store(true);
+        3:   29:            cv.notify_all();
+        -:   30:        }
+       15:   31:        for (auto &thread : threads) {
+       12:   32:            thread.join();
+        -:   33:        }
+        3:   34:    }
+        -:   35:
+       16:   36:    void addTask(std::function<void()> task) {
+       32:   37:        std::unique_lock<std::mutex> lock(mutex);
+       16:   38:        taskQueue.push(std::move(task));
+       16:   39:        cv.notify_one();
+       16:   40:    }
         -:   41:
-       32:   42:        auto task = std::make_shared<std::packaged_task<return_type()>>(
-        -:   43:            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-        -:   44:
-       16:   45:        std::future<return_type> res = task->get_future();
-        -:   46:        {
-       32:   47:            std::unique_lock<std::mutex> lock(mutex);
-       32:   48:            taskQueue.emplace([task]() { (*task)(); });
-       16:   49:            cv.notify_one();  // Ensure the lock is held when calling notify_one
-        -:   50:        }
-       32:   51:        return res;
-        -:   52:    }
-        -:   53:
-        -:   54:   private:
-       28:   55:    void workerThread() {
-       28:   56:        while (!stop.load()) {
-       27:   57:            std::function<void()> task;
-        -:   58:            {
-       27:   59:                std::unique_lock<std::mutex> lock(mutex);
-       81:   60:                cv.wait(lock, [this] { return stop.load() || !taskQueue.empty(); });
-       27:   61:                if (stop.load() && taskQueue.empty()) {
-       11:   62:                    return;
-        -:   63:                }
-       16:   64:                task = std::move(taskQueue.front());
-       16:   65:                taskQueue.pop();
-        -:   66:            }
-       16:   67:            task();
-        -:   68:        }
-        -:   69:    }
-        -:   70:};
-        -:   71:
-        -:   72:class LFHandler : public CommandHandler {
-        -:   73:   private:
-        -:   74:    LeaderFollower lf;  // Leader-Follower pattern
-        -:   75:    std::mutex graph_mutex;
-        -:   76:    string cmd_handler(string input, int user_fd);
-        -:   77:
-        -:   78:   public:
-        3:   79:    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
-        3:   80:        : CommandHandler(graph_per_user, mst_factory) {
-        3:   81:    }
-        -:   82:
-        -:   83:    /**
-        -:   84:     * Handle the input command
-        -:   85:     * will get a string input and a user file descriptor.
-        -:   86:     * add new task to the Leader-Follower pattern
-        -:   87:     */
-       16:   88:    string handle(string input, int user_fd) override {
-       16:   89:        auto future = lf.addTask([this, input, user_fd] {
-       16:   90:            string ans = cmd_handler(input, user_fd);
-       16:   91:            return ans;
-       32:   92:        });
-       32:   93:        return future.get();  // Wait for the task to complete and get the result
-        -:   94:    }
-        -:   95:
-        2:   96:    void stop() override {
-        2:   97:    }
-        -:   98:};
-        -:   99:
-        -:  100:/**
-        -:  101: * Handle the input command
-        -:  102: */
-       16:  103:string LFHandler::cmd_handler(string input, int user_fd) {
-       16:  104:    string ans = "Got input: " + input;
-       32:  105:    string command;
-       32:  106:    istringstream iss(input);
-        -:  107:    int u, v, w;
-        -:  108:
-       16:  109:    iss >> command;
-        -:  110:
-        -:  111:    // std::cout << "client " << user_fd << " sent: " << input << std::endl;
-        -:  112:
-        -:  113:    try {
-       16:  114:        if (command == NEW_GRAPH) {
-       10:  115:            string remaining_input;
-        5:  116:            getline(iss, remaining_input);
-        9:  117:            ans += init_graph(remaining_input, user_fd);
-        1:  118:            ans += "New graph created";
-        -:  119:
-       11:  120:        } else if (command == ADD_EDGE) {
-        -:  121:            // get u and v from the input
-        3:  122:            if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
-        1:  123:                ans += "Invalid input - expected format: u v w\n";
-        1:  124:                return ans;
+        -:   42:   private:
+       27:   43:    void workerThread() {
+       27:   44:        while (!stop.load()) {
+       26:   45:            std::function<void()> task;
+        -:   46:            {
+       27:   47:                std::unique_lock<std::mutex> lock(mutex);
+       81:   48:                cv.wait(lock, [this] { return stop.load() || !taskQueue.empty(); });
+       27:   49:                if (stop.load() && taskQueue.empty()) {
+       11:   50:                    return;
+        -:   51:                }
+       16:   52:                task = std::move(taskQueue.front());
+       16:   53:                taskQueue.pop();
+        -:   54:            }
+       16:   55:            task();
+        -:   56:        }
+        -:   57:    }
+        -:   58:};
+        -:   59:
+        -:   60:class LFHandler : public CommandHandler {
+        -:   61:   private:
+        -:   62:    LeaderFollower lf;  // Leader-Follower pattern
+        -:   63:    
+        -:   64:    string cmd_handler(string input, int user_fd);
+        -:   65:
+        -:   66:   public:
+        3:   67:    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
+        3:   68:        : CommandHandler(graph_per_user, mst_factory) {
+        3:   69:    }
+        -:   70:
+        -:   71:    /**
+        -:   72:     * Handle the input command
+        -:   73:     * will get a string input and a user file descriptor.
+        -:   74:     * add new task to the Leader-Follower pattern
+        -:   75:     */
+       16:   76:    void handle(string input, int user_fd, function<void(string)> on_end) override {
+       16:   77:        lf.addTask([this, input, user_fd, on_end]() {
+       16:   78:            string ans = cmd_handler(input, user_fd);
+       16:   79:            on_end(ans);
+       16:   80:        });
+       16:   81:    }
+        -:   82:};
+        -:   83:
+        -:   84:/**
+        -:   85: * Handle the input command
+        -:   86: */
+       16:   87:string LFHandler::cmd_handler(string input, int user_fd) {
+       16:   88:    string ans = "Got input: " + input;
+       32:   89:    string command;
+       32:   90:    istringstream iss(input);
+        -:   91:    int u, v, w;
+        -:   92:
+       16:   93:    iss >> command;
+        -:   94:
+        -:   95:    // std::cout << "client " << user_fd << " sent: " << input << std::endl;
+        -:   96:
+        -:   97:    try {
+       16:   98:        if (command == NEW_GRAPH) {
+        9:   99:            string remaining_input;
+        5:  100:            getline(iss, remaining_input);
+        9:  101:            ans += init_graph(remaining_input, user_fd);
+       11:  102:        } else if (command == ADD_EDGE) {
+        -:  103:            // get u and v from the input
+        3:  104:            if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
+        1:  105:                ans += "Invalid input - expected format: u v w\n";
+        1:  106:                return ans;
+        -:  107:            }
+        -:  108:            {
+        4:  109:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:  110:                Graph &g = graph_per_user[user_fd].first;
+        2:  111:                g.addEdge(u - 1, v - 1, w);
+        1:  112:                g.addEdge(v - 1, u - 1, w);
+        -:  113:            }
+        -:  114:
+        8:  115:        } else if (command == REMOVE_EDGE) {
+        3:  116:            if (!(iss >> u >> v)) {
+        1:  117:                ans += "Invalid input - expected u and v\n";
+        1:  118:                return ans;
+        -:  119:            }
+        -:  120:            {
+        4:  121:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:  122:                Graph &g = graph_per_user[user_fd].first;
+        2:  123:                g.removeEdge(u - 1, v - 1);
+        1:  124:                g.removeEdge(v - 1, u - 1);
         -:  125:            }
-        -:  126:            {
-        4:  127:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  128:                Graph &g = graph_per_user[user_fd].first;
-        2:  129:                g.addEdge(u - 1, v - 1, w);
-        1:  130:                g.addEdge(v - 1, u - 1, w);
-        -:  131:            }
-        -:  132:
-        8:  133:        } else if (command == REMOVE_EDGE) {
-        3:  134:            if (!(iss >> u >> v)) {
-        1:  135:                ans += "Invalid input - expected u and v\n";
-        1:  136:                return ans;
-        -:  137:            }
-        -:  138:            {
-        4:  139:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  140:                Graph &g = graph_per_user[user_fd].first;
-        2:  141:                g.removeEdge(u - 1, v - 1);
-        1:  142:                g.removeEdge(v - 1, u - 1);
-        -:  143:            }
-        5:  144:        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        2:  145:            MSTSolver *solver = mst_factory.createMSTSolver(command);
-        4:  146:            TreeOnGraph mst;
-        -:  147:            {
-        4:  148:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  149:                Graph &g = graph_per_user[user_fd].first;
-        2:  150:                mst = solver->getMST(g);
-        2:  151:                graph_per_user[user_fd].second = mst;
+        5:  126:        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+        2:  127:            MSTSolver *solver = mst_factory.createMSTSolver(command);
+        4:  128:            TreeOnGraph mst;
+        -:  129:            {
+        4:  130:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:  131:                Graph &g = graph_per_user[user_fd].first;
+        2:  132:                mst = solver->getMST(g);
+        2:  133:                graph_per_user[user_fd].second = mst;
+        -:  134:            }
+        -:  135:
+        2:  136:            ans += "MST: \n" + mst.toString();
+        -:  137:
+        -:  138:            // do calculations
+        -:  139:            // add weight
+        2:  140:            ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
+        -:  141:            // add longest distance
+        2:  142:            ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
+        -:  143:            // add shortest distance
+        2:  144:            ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
+        -:  145:            // add average distance
+        2:  146:            ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
+        2:  147:            delete solver;
+        3:  148:        } else if (command == PRINT_GRAPH) {
+        -:  149:            {
+        1:  150:                std::lock_guard<std::mutex> lock(graph_mutex);
+        1:  151:                ans += graph_per_user[user_fd].first.toString();
         -:  152:            }
-        -:  153:
-        2:  154:            ans += "MST: \n" + mst.toString();
-        -:  155:
-        -:  156:            // do calculations
-        -:  157:            // add weight
-        2:  158:            ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
-        -:  159:            // add longest distance
-        2:  160:            ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
-        -:  161:            // add shortest distance
-        2:  162:            ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
-        -:  163:            // add average distance
-        2:  164:            ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
-        2:  165:            delete solver;
-        3:  166:        } else if (command == PRINT_GRAPH) {
-        -:  167:            {
-        1:  168:                std::lock_guard<std::mutex> lock(graph_mutex);
-        1:  169:                ans += graph_per_user[user_fd].first.toString();
-        -:  170:            }
-        -:  171:        } else {
-        2:  172:            ans += "Invalid command";
-        -:  173:        }
-        6:  174:    } catch (const std::exception &e) {
-        6:  175:        ans += "Error: " + string(e.what());
-        -:  176:    }
-        -:  177:
-        -:  178:    // ad LF if needed
-       14:  179:    if (ans.back() != '\n') {
-        9:  180:        ans += "\n";
-        -:  181:    }
-        -:  182:
-        -:  183:    // std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
-        -:  184:
-       14:  185:    return ans;
-        -:  186:}
+        -:  153:        } else {
+        2:  154:            ans += "Invalid command";
+        -:  155:        }
+        6:  156:    } catch (const std::exception &e) {
+        6:  157:        ans += "Error: " + string(e.what());
+        -:  158:    }
+        -:  159:
+        -:  160:    // ad LF if needed
+       14:  161:    if (ans.back() != '\n') {
+        8:  162:        ans += "\n";
+        -:  163:    }
+        -:  164:
+        -:  165:    // std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
+        -:  166:
+       14:  167:    return ans;
+        -:  168:}

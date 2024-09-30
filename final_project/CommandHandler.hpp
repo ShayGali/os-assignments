@@ -43,7 +43,6 @@ class CommandHandler {
         while (i < m) {
             if (!(iss >> first >> second >> third)) {  // buffer is empty (we assume that we dont have the first in the buffer, we need to get both of them)
                 throw std::invalid_argument("Invalid input - you dont send the " + std::to_string(i + 1) + " edge");
-                continue;
             }
             // convert string to int
             u = stoi(first);

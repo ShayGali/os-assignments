@@ -27,7 +27,7 @@ using std::to_string;
 using std::unique_lock;
 
 /**
- * @brief Command handler implamented using pipeline and active object pattern
+ * @brief Command handler
  *
  */
 
@@ -94,11 +94,15 @@ class PipelineStage : public ActiveObject {
 
     void process(string input, int user_fd, function<void(string)> on_end) {
         invoke([this, input, user_fd, on_end] {
-            string output = (task(input, user_fd));
-            if (next_stage != nullptr) {                       // if there is a next stage
-                next_stage->process(output, user_fd, on_end);  // process the output in the next stage
-            } else {
-                on_end(output);
+            try {
+                string output = (task(input, user_fd));
+                if (next_stage != nullptr) {                       // if there is a next stage
+                    next_stage->process(output, user_fd, on_end);  // process the output in the next stage
+                } else {
+                    on_end(output);
+                }
+            } catch (const invalid_argument &e) {
+                on_end(string(e.what()) + "\n");
             }
         });
     }
@@ -123,13 +127,6 @@ class PipelineHandler : public CommandHandler {
         if (!(iss >> u >> v >> w)) {
             throw invalid_argument("Invalid input - expected u, v, and w");
         }
-        if (u <= 0 || u > graph_per_user[user_fd].first.V() || v <= 0 || v > graph_per_user[user_fd].first.V() || u == v) {
-            throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(graph_per_user[user_fd].first.V()) + " and u != v. Got: " + to_string(u) + " " + to_string(v));
-        }
-
-        if (w <= 0) {
-            throw invalid_argument("Invalid input - invalid weight. Weight must be greater than 0. Got: " + to_string(w));
-        }
 
         graph_mutex.lock();
         graph_per_user[user_fd].first.addEdge(u - 1, v - 1, w);
@@ -144,9 +141,6 @@ class PipelineHandler : public CommandHandler {
         int u, v;
         if (!(iss >> u >> v)) {
             throw invalid_argument("Invalid input - expected u and v");
-        }
-        if (u <= 0 || u > graph_per_user[user_fd].first.V() || v <= 0 || v > graph_per_user[user_fd].first.V() || u == v) {
-            throw invalid_argument("Invalid input - invalid edge. Edge must be between 1 and " + to_string(graph_per_user[user_fd].first.V()) + " and u != v. Got: " + to_string(u) + " " + to_string(v));
         }
 
         graph_mutex.lock();
@@ -223,22 +217,18 @@ class PipelineHandler : public CommandHandler {
         // update the input to be the rest of the input
         getline(iss, input);
 
-        try {
-            if (command == NEW_GRAPH) {
-                new_graph_stage->process(input, user_fd, on_end);
-            } else if (command == ADD_EDGE) {
-                add_edge_stage->process(input, user_fd, on_end);
-            } else if (command == REMOVE_EDGE) {
-                remove_edge_stage->process(input, user_fd, on_end);
-            } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-                mst_init_stage->process(command, user_fd, on_end);
-            } else if (command == PRINT_GRAPH) {
-                print_graph_stage->process(input, user_fd, on_end);
-            } else {
-                on_end("Invalid command\n");
-            }
-        } catch (const invalid_argument &e) {
-            on_end("Error: " + string(e.what()) + '\n');
+        if (command == NEW_GRAPH) {
+            new_graph_stage->process(input, user_fd, on_end);
+        } else if (command == ADD_EDGE) {
+            add_edge_stage->process(input, user_fd, on_end);
+        } else if (command == REMOVE_EDGE) {
+            remove_edge_stage->process(input, user_fd, on_end);
+        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+            mst_init_stage->process(command, user_fd, on_end);
+        } else if (command == PRINT_GRAPH) {
+            print_graph_stage->process(input, user_fd, on_end);
+        } else {
+            on_end("Invalid command\n");
         }
     }
 };

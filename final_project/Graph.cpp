@@ -10,6 +10,11 @@ void Graph::addEdge(size_t u, size_t v, int weight) {
     if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
         throw std::invalid_argument("Invalid vertex index");
     }
+
+    if(weight <= 0) {
+        throw std::invalid_argument("Invalid weight");
+    }
+
     adjMat[u][v] = weight;
 }
 

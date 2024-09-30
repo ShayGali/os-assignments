@@ -3,78 +3,83 @@
         -:    2:
         -:    3:#include <stdexcept>
         -:    4:
-       38:    5:Graph::Graph(int n) {
-       38:    6:    adjMat = vector<vector<int>>(n, vector<int>(n, NO_EDGE));
-       38:    7:}
+       22:    5:Graph::Graph(int n) {
+       22:    6:    adjMat = vector<vector<int>>(n, vector<int>(n, NO_EDGE));
+       22:    7:}
         -:    8:
-       33:    9:void Graph::addEdge(size_t u, size_t v, int weight) {
-       33:   10:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
+       19:    9:void Graph::addEdge(size_t u, size_t v, int weight) {
+       19:   10:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
         1:   11:        throw std::invalid_argument("Invalid vertex index");
         -:   12:    }
-       32:   13:    adjMat[u][v] = weight;
-       32:   14:}
-        -:   15:
-        5:   16:void Graph::removeEdge(size_t u, size_t v) {
-        5:   17:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
-        1:   18:        throw std::invalid_argument("Invalid vertex index");
-        -:   19:    }
-        4:   20:    adjMat[u][v] = NO_EDGE;
-        4:   21:}
-        -:   22:
-        6:   23:vector<int> Graph::getNeighbors(size_t u) const {
-        6:   24:    if (u < 0 || u >= adjMat.size()) {
-    #####:   25:        throw std::invalid_argument("Invalid vertex index");
-        -:   26:    }
-        6:   27:    vector<int> neighbors;
-       24:   28:    for (size_t i = 0; i < adjMat.size(); i++) {
-       18:   29:        if (adjMat[u][i] != NO_EDGE) {
-       12:   30:            neighbors.push_back(i);
-        -:   31:        }
-        -:   32:    }
-        -:   33:
-        6:   34:    return neighbors;
-        -:   35:}
-        -:   36:
-       32:   37:const vector<vector<int>>& Graph::getAdjMat() const {
-       32:   38:    return adjMat;
-        -:   39:}
-        -:   40:
-       20:   41:int Graph::getWeight(size_t u, size_t v) const {
-      20*:   42:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
-    #####:   43:        throw std::invalid_argument("Invalid vertex index");
-        -:   44:    }
-       20:   45:    return adjMat[u][v];
-        -:   46:}
-        -:   47:
-       18:   48:int Graph::V() const {
-       18:   49:    return adjMat.size();
-        -:   50:}
-        -:   51:
-        -:   52:/**
-        -:   53: * @brief Get the edges of the graph. (the graph is undirected)
-        -:   54: */
-        6:   55:vector<Edge> Graph::getEdges() const {
-        -:   56:    // the graph is undirected, so we need to iterate only over the upper triangle of the matrix
-        6:   57:    vector<Edge> edges;
-       24:   58:    for (size_t i = 0; i < adjMat.size(); i++) {
-       36:   59:        for (size_t j = i + 1; j < adjMat.size(); j++) {
-       18:   60:            if (adjMat[i][j] != NO_EDGE) {
-       14:   61:                edges.push_back({i, j, adjMat[i][j]});
-        -:   62:            }
-        -:   63:        }
-        -:   64:    }
-        -:   65:
-        6:   66:    return edges;
-        -:   67:}
-        -:   68:
-        2:   69:string Graph::toString() const {
-        2:   70:    string str = "";
-        8:   71:    for (size_t i = 0; i < adjMat.size(); i++) {
-       12:   72:        for (size_t j = i + 1; j < adjMat.size(); j++) {
-        6:   73:            if (adjMat[i][j] != NO_EDGE) {
-        6:   74:                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(adjMat[i][j]) + "\n";
-        -:   75:            }
-        -:   76:        }
-        -:   77:    }
-        2:   78:    return str;
-        -:   79:}
+        -:   13:
+       18:   14:    if(weight <= 0) {
+    #####:   15:        throw std::invalid_argument("Invalid weight");
+        -:   16:    }
+        -:   17:
+       18:   18:    adjMat[u][v] = weight;
+       18:   19:}
+        -:   20:
+        3:   21:void Graph::removeEdge(size_t u, size_t v) {
+        3:   22:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
+        1:   23:        throw std::invalid_argument("Invalid vertex index");
+        -:   24:    }
+        2:   25:    adjMat[u][v] = NO_EDGE;
+        2:   26:}
+        -:   27:
+        3:   28:vector<int> Graph::getNeighbors(size_t u) const {
+        3:   29:    if (u < 0 || u >= adjMat.size()) {
+    #####:   30:        throw std::invalid_argument("Invalid vertex index");
+        -:   31:    }
+        3:   32:    vector<int> neighbors;
+       12:   33:    for (size_t i = 0; i < adjMat.size(); i++) {
+        9:   34:        if (adjMat[u][i] != NO_EDGE) {
+        6:   35:            neighbors.push_back(i);
+        -:   36:        }
+        -:   37:    }
+        -:   38:
+        3:   39:    return neighbors;
+        -:   40:}
+        -:   41:
+       16:   42:const vector<vector<int>>& Graph::getAdjMat() const {
+       16:   43:    return adjMat;
+        -:   44:}
+        -:   45:
+       10:   46:int Graph::getWeight(size_t u, size_t v) const {
+      10*:   47:    if (u < 0 || u >= adjMat.size() || v < 0 || v >= adjMat.size()) {
+    #####:   48:        throw std::invalid_argument("Invalid vertex index");
+        -:   49:    }
+       10:   50:    return adjMat[u][v];
+        -:   51:}
+        -:   52:
+        5:   53:int Graph::V() const {
+        5:   54:    return adjMat.size();
+        -:   55:}
+        -:   56:
+        -:   57:/**
+        -:   58: * @brief Get the edges of the graph. (the graph is undirected)
+        -:   59: */
+        3:   60:vector<Edge> Graph::getEdges() const {
+        -:   61:    // the graph is undirected, so we need to iterate only over the upper triangle of the matrix
+        3:   62:    vector<Edge> edges;
+       12:   63:    for (size_t i = 0; i < adjMat.size(); i++) {
+       18:   64:        for (size_t j = i + 1; j < adjMat.size(); j++) {
+        9:   65:            if (adjMat[i][j] != NO_EDGE) {
+        7:   66:                edges.push_back({i, j, adjMat[i][j]});
+        -:   67:            }
+        -:   68:        }
+        -:   69:    }
+        -:   70:
+        3:   71:    return edges;
+        -:   72:}
+        -:   73:
+        1:   74:string Graph::toString() const {
+        1:   75:    string str = "";
+        4:   76:    for (size_t i = 0; i < adjMat.size(); i++) {
+        6:   77:        for (size_t j = i + 1; j < adjMat.size(); j++) {
+        3:   78:            if (adjMat[i][j] != NO_EDGE) {
+        3:   79:                str += std::to_string(i + 1) + " <-> " + std::to_string(j + 1) + " , " + std::to_string(adjMat[i][j]) + "\n";
+        -:   80:            }
+        -:   81:        }
+        -:   82:    }
+        1:   83:    return str;
+        -:   84:}

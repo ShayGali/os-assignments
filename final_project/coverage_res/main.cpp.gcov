@@ -24,215 +24,211 @@
         -:   23:
         -:   24:using namespace std;
         -:   25:
-        -:   26:// global variable for the graph
-        -:   27:// Graph g(0);
-        -:   28:// TreeOnGraph mst(g);
-        -:   29:MSTFactory mst_factory;
-        -:   30:
-        -:   31:map<int, pair<Graph, TreeOnGraph>> graph_per_user;
-        -:   32:
-        -:   33:// Define constants for buffer size, port, and max clients
-        -:   34:constexpr char PORT[] = "9034";
-        -:   35:constexpr int MAX_CLIENT = 10;
-        -:   36:
-        -:   37:string command_handler(string input, int user_fd);
-        -:   38:string init_graph(istringstream &iss, int user_fd);
-        -:   39:
-        -:   40:// get sockaddr, IPv4 or IPv6:
-        7:   41:void *get_in_addr(struct sockaddr *sa) {
-        7:   42:    if (sa->sa_family == AF_INET) {
-        7:   43:        return &(((struct sockaddr_in *)sa)->sin_addr);
-        -:   44:    }
-        -:   45:
-    #####:   46:    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-        -:   47:}
-        -:   48:
-        3:   49:int open_server() {
-        -:   50:    int listener;  // listening socket descriptor
-        -:   51:
-        3:   52:    int yes = 1;  // for setsockopt() SO_REUSEADDR, below
-        -:   53:    int rv;
-        -:   54:
-        -:   55:    struct addrinfo hints, *ai, *p;
-        -:   56:
-        -:   57:    // get us a socket and bind it
-        3:   58:    memset(&hints, 0, sizeof(hints));
-        3:   59:    hints.ai_family = AF_UNSPEC;
-        3:   60:    hints.ai_socktype = SOCK_STREAM;
-        3:   61:    hints.ai_flags = AI_PASSIVE;
-        3:   62:    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
-    #####:   63:        cerr << "selectserver: " << gai_strerror(rv) << endl;
-    #####:   64:        exit(EXIT_FAILURE);
-        -:   65:    }
-        -:   66:
-       3*:   67:    for (p = ai; p != NULL; p = p->ai_next) {
-        3:   68:        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-       3*:   69:        if (listener < 0) {
-    #####:   70:            continue;
-        -:   71:        }
-        -:   72:
-        -:   73:        // allow socket descriptor to be reuseable
-        3:   74:        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-        -:   75:
-       3*:   76:        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
-    #####:   77:            close(listener);
-    #####:   78:            continue;
-        -:   79:        }
-        -:   80:
-        3:   81:        break;
-        -:   82:    }
-        -:   83:
-        -:   84:    // if we got here, it means we didn't get bound
-        3:   85:    if (p == NULL) {
-    #####:   86:        cerr << "selectserver: failed to bind\n";
-    #####:   87:        exit(EXIT_FAILURE);
-        -:   88:    }
-        -:   89:
-        3:   90:    freeaddrinfo(ai);  // all done with this
-        -:   91:
-        -:   92:    // listen
-        3:   93:    if (listen(listener, MAX_CLIENT) == -1) {
-    #####:   94:        perror("listen");
-    #####:   95:        exit(EXIT_FAILURE);
-        -:   96:    }
-        -:   97:
-        3:   98:    cout << "selectserver: waiting for connections on port " << PORT << endl;
-        -:   99:
-        3:  100:    return listener;
-        -:  101:}
-        -:  102:
-        7:  103:void accept_connection(int listener, fd_set &master, int &fdmax) {
-        -:  104:    struct sockaddr_storage remoteaddr;  // client address
-        7:  105:    socklen_t addrlen = sizeof(remoteaddr);
-        7:  106:    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
-        -:  107:
-        7:  108:    if (newfd == -1) {
-    #####:  109:        perror("accept");
-        -:  110:    } else {
-        7:  111:        FD_SET(newfd, &master);  // add to master set
-        7:  112:        if (newfd > fdmax) {     // keep track of the max
-        3:  113:            fdmax = newfd;
-        -:  114:        }
-        -:  115:
-        -:  116:        char remoteIP[INET6_ADDRSTRLEN];
-        7:  117:        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
-        7:  118:        cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
-        -:  119:    }
-        7:  120:}
-        -:  121:
-        6:  122:int main(int argc, char *argv[]) {
-        6:  123:    CommandHandler *handler = nullptr;
-        -:  124:    int opt;
-        -:  125:    // check if we get l flag or p flag (l for LFHandler, p for PipelineHandler)
-       10:  126:    while ((opt = getopt(argc, argv, "lp")) != -1) {
-        7:  127:        switch (opt) {
-        3:  128:            case 'l':
-        3:  129:                if (handler != nullptr) {
-        1:  130:                    delete handler;
-        1:  131:                    cerr << "You can't use both flags" << endl;
-        1:  132:                    exit(EXIT_FAILURE);
-        -:  133:                }
-        2:  134:                handler = new LFHandler(graph_per_user, mst_factory);
-        2:  135:                break;
-        3:  136:            case 'p':
-        3:  137:                if (handler != nullptr) {
-        1:  138:                    delete handler;
-        1:  139:                    cerr << "You can't use both flags" << endl;
-        1:  140:                    exit(EXIT_FAILURE);
-        -:  141:                }
-        2:  142:                handler = new PipelineHandler(graph_per_user, mst_factory);
-        2:  143:                break;
-        1:  144:            default: /* '?' */
-        1:  145:                fprintf(stderr, "Usage: %s [-l] [-p]\n", argv[0]);
-        1:  146:                exit(EXIT_FAILURE);
-        -:  147:        }
-        -:  148:    }
-        -:  149:
-        3:  150:    if (handler == nullptr) {
-        -:  151:        // display warning message (in yellow)
-        1:  152:        cerr << "\033[33m" << "[WARNING] No flag was given, using LFHandler by default" << "\033[0m" << endl;
-        1:  153:        handler = new LFHandler(graph_per_user, mst_factory);
-        -:  154:    }
-        -:  155:
-        -:  156:    // variables for the server
-        -:  157:    char buf[BUF_SIZE];  // buffer for client data
-        -:  158:    int nbytes;
-        3:  159:    string ans;
-        -:  160:
-        3:  161:    int listener = open_server();
-        -:  162:
-        -:  163:    fd_set master;    // master file descriptor list
-        -:  164:    fd_set read_fds;  // temp file descriptor list for select()
-        -:  165:    int fdmax;        // maximum file descriptor number
+        -:   26:constexpr int BUF_SIZE = 1024;
+        -:   27:
+        -:   28:MSTFactory mst_factory;
+        -:   29:
+        -:   30:map<int, pair<Graph, TreeOnGraph>> graph_per_user;
+        -:   31:
+        -:   32:// Define constants for buffer size, port, and max clients
+        -:   33:constexpr char PORT[] = "9034";
+        -:   34:constexpr int MAX_CLIENT = 10;
+        -:   35:
+        -:   36:// get sockaddr, IPv4 or IPv6:
+        4:   37:void *get_in_addr(struct sockaddr *sa) {
+        4:   38:    if (sa->sa_family == AF_INET) {
+        4:   39:        return &(((struct sockaddr_in *)sa)->sin_addr);
+        -:   40:    }
+        -:   41:
+    #####:   42:    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+        -:   43:}
+        -:   44:
+        2:   45:int open_server() {
+        -:   46:    int listener;  // listening socket descriptor
+        -:   47:
+        2:   48:    int yes = 1;  // for setsockopt() SO_REUSEADDR, below
+        -:   49:    int rv;
+        -:   50:
+        -:   51:    struct addrinfo hints, *ai, *p;
+        -:   52:
+        -:   53:    // get us a socket and bind it
+        2:   54:    memset(&hints, 0, sizeof(hints));
+        2:   55:    hints.ai_family = AF_UNSPEC;
+        2:   56:    hints.ai_socktype = SOCK_STREAM;
+        2:   57:    hints.ai_flags = AI_PASSIVE;
+        2:   58:    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
+    #####:   59:        cerr << "selectserver: " << gai_strerror(rv) << endl;
+    #####:   60:        exit(EXIT_FAILURE);
+        -:   61:    }
+        -:   62:
+       2*:   63:    for (p = ai; p != NULL; p = p->ai_next) {
+        2:   64:        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+       2*:   65:        if (listener < 0) {
+    #####:   66:            continue;
+        -:   67:        }
+        -:   68:
+        -:   69:        // allow socket descriptor to be reuseable
+        2:   70:        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+        -:   71:
+       2*:   72:        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
+    #####:   73:            close(listener);
+    #####:   74:            continue;
+        -:   75:        }
+        -:   76:
+        2:   77:        break;
+        -:   78:    }
+        -:   79:
+        -:   80:    // if we got here, it means we didn't get bound
+        2:   81:    if (p == NULL) {
+    #####:   82:        cerr << "selectserver: failed to bind\n";
+    #####:   83:        exit(EXIT_FAILURE);
+        -:   84:    }
+        -:   85:
+        2:   86:    freeaddrinfo(ai);  // all done with this
+        -:   87:
+        -:   88:    // listen
+        2:   89:    if (listen(listener, MAX_CLIENT) == -1) {
+    #####:   90:        perror("listen");
+    #####:   91:        exit(EXIT_FAILURE);
+        -:   92:    }
+        -:   93:
+        2:   94:    cout << "selectserver: waiting for connections on port " << PORT << endl;
+        -:   95:
+        2:   96:    return listener;
+        -:   97:}
+        -:   98:
+        4:   99:void accept_connection(int listener, fd_set &master, int &fdmax) {
+        -:  100:    struct sockaddr_storage remoteaddr;  // client address
+        4:  101:    socklen_t addrlen = sizeof(remoteaddr);
+        4:  102:    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+        -:  103:
+        4:  104:    if (newfd == -1) {
+    #####:  105:        perror("accept");
+        -:  106:    } else {
+        4:  107:        FD_SET(newfd, &master);  // add to master set
+        4:  108:        if (newfd > fdmax) {     // keep track of the max
+        2:  109:            fdmax = newfd;
+        -:  110:        }
+        -:  111:
+        -:  112:        char remoteIP[INET6_ADDRSTRLEN];
+        4:  113:        const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+        4:  114:        cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
+        -:  115:    }
+        4:  116:}
+        -:  117:
+        5:  118:int main(int argc, char *argv[]) {
+        5:  119:    CommandHandler *handler = nullptr;
+        5:  120:    mutex send_mutex;
+        -:  121:    int opt;
+        -:  122:    // check if we get l flag or p flag (l for LFHandler, p for PipelineHandler)
+        8:  123:    while ((opt = getopt(argc, argv, "lp")) != -1) {
+        6:  124:        switch (opt) {
+        3:  125:            case 'l':
+        3:  126:                if (handler != nullptr) {
+        1:  127:                    delete handler;
+        1:  128:                    cerr << "You can't use both flags" << endl;
+        1:  129:                    exit(EXIT_FAILURE);
+        -:  130:                }
+        2:  131:                handler = new LFHandler(graph_per_user, mst_factory);
+        2:  132:                break;
+        2:  133:            case 'p':
+        2:  134:                if (handler != nullptr) {
+        1:  135:                    delete handler;
+        1:  136:                    cerr << "You can't use both flags" << endl;
+        1:  137:                    exit(EXIT_FAILURE);
+        -:  138:                }
+        1:  139:                handler = new PipelineHandler(graph_per_user, mst_factory);
+        1:  140:                break;
+        1:  141:            default: /* '?' */
+        1:  142:                fprintf(stderr, "Usage: %s [-l] [-p]\n", argv[0]);
+        1:  143:                exit(EXIT_FAILURE);
+        -:  144:        }
+        -:  145:    }
+        -:  146:
+        2:  147:    if (handler == nullptr) {
+        -:  148:        // display warning message (in yellow)
+        1:  149:        cerr << "\033[33m" << "[WARNING] No flag was given, using LFHandler by default" << "\033[0m" << endl;
+        1:  150:        handler = new LFHandler(graph_per_user, mst_factory);
+        -:  151:    }
+        -:  152:
+        -:  153:    // variables for the server
+        -:  154:    char buf[BUF_SIZE];  // buffer for client data
+        -:  155:    int nbytes;
+        2:  156:    string ans;
+        -:  157:
+        2:  158:    int listener = open_server();
+        -:  159:
+        -:  160:    fd_set master;    // master file descriptor list
+        -:  161:    fd_set read_fds;  // temp file descriptor list for select()
+        -:  162:    int fdmax;        // maximum file descriptor number
+        -:  163:
+        2:  164:    FD_ZERO(&master);  // clear the master and temp sets
+        2:  165:    FD_ZERO(&read_fds);
         -:  166:
-        3:  167:    FD_ZERO(&master);  // clear the master and temp sets
-        3:  168:    FD_ZERO(&read_fds);
+        -:  167:    // add the listener to the master set
+        2:  168:    FD_SET(listener, &master);
         -:  169:
-        -:  170:    // add the listener to the master set
-        3:  171:    FD_SET(listener, &master);
+        -:  170:    // keep track of the biggest file descriptor
+        2:  171:    fdmax = listener;  // so far, it's this one
         -:  172:
-        -:  173:    // keep track of the biggest file descriptor
-        3:  174:    fdmax = listener;  // so far, it's this one
-        -:  175:
-        -:  176:    // main loop
-        -:  177:    for (;;) {
-       46:  178:        read_fds = master;  // copy it
-       46:  179:        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
-    #####:  180:            perror("select");
-    #####:  181:            exit(EXIT_FAILURE);
-        -:  182:        }
-        -:  183:
-        -:  184:        // run through the existing connections looking for data to read
-      273:  185:        for (int i = 0; i <= fdmax; i++) {
-      230:  186:            if (FD_ISSET(i, &read_fds)) {  // we got one!!
-       46:  187:                if (i == listener) {
-        -:  188:                    // handle new connections
-        7:  189:                    accept_connection(listener, master, fdmax);
-        -:  190:
-        -:  191:                    // create a new graph for the user
-        7:  192:                    graph_per_user[i] = make_pair(Graph(), TreeOnGraph());
-        -:  193:                } else {  // handle data from a client
-       39:  194:                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
-        -:  195:                        // got error or connection closed by client
-        4:  196:                        if (nbytes == 0 || errno == ECONNRESET) {
-        4:  197:                            cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
-        -:  198:                        } else {
-    #####:  199:                            perror("recv");
-        -:  200:                        }
-        4:  201:                        close(i);            // closing the socket of the client
-        4:  202:                        FD_CLR(i, &master);  // remove from master set
-        -:  203:                    } else {                 // we got some data from a client
-        -:  204:                        // add '\0' to the end of the buffer
-       35:  205:                        buf[nbytes] = '\0';
-        -:  206:
-       35:  207:                        if (string(buf).starts_with("kill")) {
-        3:  208:                            cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
-        -:  209:                            // stop the handler
-        3:  210:                            handler->stop();
-        -:  211:                            // close all the sockets
-       18:  212:                            for (int j = 0; j <= fdmax; j++) {
-       15:  213:                                if (FD_ISSET(j, &master)) {
-        6:  214:                                    close(j);
-        -:  215:                                }
-        -:  216:                            }
-        -:  217:                            // free the memory
-        3:  218:                            delete handler;
-        -:  219:                            // stop the server
-        3:  220:                            close(listener);
-        3:  221:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
-        3:  222:                            return 0;
-        -:  223:                        }
-        -:  224:                        // lock the mutex
-       32:  225:                        ans = handler->handle(buf, i);
-        -:  226:                        // unlock the mutex
-       32:  227:                        if (send(i, ans.c_str(), ans.size(), 0) == -1) {
-    #####:  228:                            perror("send");
-        -:  229:                        }
-       32:  230:                        memset(buf, 0, sizeof(buf));  // clear the buffer
-        -:  231:                    }
-        -:  232:                }  // END handle data from client
-        -:  233:            }  // END got new incoming data
-        -:  234:        }  // END looping through file descriptors
-       43:  235:    }  // END for(;;)--and you thought it would never end!
-        -:  236:    return 0;
-        -:  237:}
+        -:  173:    // main loop
+        -:  174:    for (;;) {
+       24:  175:        read_fds = master;  // copy it
+       24:  176:        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+    #####:  177:            perror("select");
+    #####:  178:            exit(EXIT_FAILURE);
+        -:  179:        }
+        -:  180:
+        -:  181:        // run through the existing connections looking for data to read
+      142:  182:        for (int i = 0; i <= fdmax; i++) {
+      120:  183:            if (FD_ISSET(i, &read_fds)) {  // we got one!!
+       24:  184:                if (i == listener) {
+        -:  185:                    // handle new connections
+        4:  186:                    accept_connection(listener, master, fdmax);
+        -:  187:
+        -:  188:                    // create a new graph for the user
+        4:  189:                    graph_per_user[i] = make_pair(Graph(), TreeOnGraph());
+        -:  190:                } else {  // handle data from a client
+       20:  191:                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
+        -:  192:                        // got error or connection closed by client
+        2:  193:                        if (nbytes == 0 || errno == ECONNRESET) {
+        2:  194:                            cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
+        -:  195:                        } else {
+    #####:  196:                            perror("recv");
+        -:  197:                        }
+        2:  198:                        close(i);            // closing the socket of the client
+        2:  199:                        FD_CLR(i, &master);  // remove from master set
+        -:  200:                    } else {                 // we got some data from a client
+        -:  201:                        // add '\0' to the end of the buffer
+       18:  202:                        buf[nbytes] = '\0';
+        -:  203:
+       18:  204:                        if (string(buf).starts_with("kill")) {
+        2:  205:                            cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
+        -:  206:                            // close all the sockets
+       12:  207:                            for (int j = 0; j <= fdmax; j++) {
+       10:  208:                                if (FD_ISSET(j, &master)) {
+        4:  209:                                    close(j);
+        -:  210:                                }
+        -:  211:                            }
+        -:  212:                            // free the memory
+        2:  213:                            delete handler;
+        -:  214:                            // stop the server
+        2:  215:                            close(listener);
+        2:  216:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
+        2:  217:                            return 0;
+        -:  218:                        }
+       16:  219:                        string input(buf);
+       16:  220:                        handler->handle(input, i, [i, &send_mutex](string ans) {
+       32:  221:                            lock_guard<mutex> lock(send_mutex);
+       16:  222:                            if (send(i, ans.c_str(), ans.size(), 0) == -1) {
+    #####:  223:                                perror("send");
+        -:  224:                            }
+       32:  225:                        });
+       16:  226:                        memset(buf, 0, sizeof(buf));  // clear the buffer
+        -:  227:                    }
+        -:  228:                }  // END handle data from client
+        -:  229:            }  // END got new incoming data
+        -:  230:        }  // END looping through file descriptors
+       22:  231:    }  // END for(;;)--and you thought it would never end!
+        -:  232:    return 0;
+        -:  233:}
