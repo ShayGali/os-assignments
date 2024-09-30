@@ -1,0 +1,182 @@
+        -:    0:Source:PipelineHandler.cpp
+        -:    1:#include "PipelineHandler.hpp"
+        -:    2:
+       51:    3:void ActiveObject::run() {
+        -:    4:    while (true) {
+       51:    5:        function<void()> task;
+        -:    6:        {
+       53:    7:            unique_lock<mutex> lock(m);
+      156:    8:            cv.wait(lock, [this] { return !tasks.empty() || stop; });
+       53:    9:            if (stop && tasks.empty()) {
+       72:   10:                return;
+        -:   11:            }
+       17:   12:            if (!tasks.empty()) {
+       17:   13:                task = tasks.front();
+       17:   14:                tasks.pop();
+        -:   15:            }
+        -:   16:        }
+       17:   17:        if (task) {
+       17:   18:            task();
+        -:   19:        }
+       17:   20:    }
+        -:   21:}
+        -:   22:
+       36:   23:ActiveObject::~ActiveObject() {
+        -:   24:    {
+       72:   25:        unique_lock<mutex> lock(m);
+       36:   26:        stop = true;
+       36:   27:        cv.notify_all();  // Move notify_all() inside the lock
+        -:   28:    }
+       36:   29:    my_thread.join();
+       36:   30:}
+        -:   31:
+       27:   32:void ActiveObject::stop_work() {
+        -:   33:    {
+       54:   34:        unique_lock<mutex> lock(m);
+       27:   35:        stop = true;
+       27:   36:        cv.notify_all();
+        -:   37:    }
+       27:   38:}
+        -:   39:
+       17:   40:void ActiveObject::invoke(function<void()> task) {
+       34:   41:    unique_lock<mutex> lock(m);
+       17:   42:    tasks.push(task);
+       17:   43:    cv.notify_one();
+       17:   44:}
+        -:   45:
+       17:   46:void PipelineStage::process(string input, int user_fd, function<void(string)> on_end) {
+       17:   47:    invoke([this, input, user_fd, on_end] {
+        -:   48:        try {
+       34:   49:            string output = (task(input, user_fd));
+       15:   50:            if (next_stage != nullptr) {                       // if there is a next stage
+        8:   51:                next_stage->process(output, user_fd, on_end);  // process the output in the next stage
+        -:   52:            } else {
+        7:   53:                on_end(output);
+        -:   54:            }
+        2:   55:        } catch (const invalid_argument &e) {
+        2:   56:            on_end(string(e.what()) + "\n");
+        -:   57:        }
+       17:   58:    });
+       17:   59:}
+        -:   60:
+        2:   61:string PipelineHandler::add_edge(string input, int user_fd) {
+        3:   62:    istringstream iss(input);
+        -:   63:    int u, v, w;
+        2:   64:    if (!(iss >> u >> v >> w)) {
+        1:   65:        throw invalid_argument("Invalid input - expected u, v, and w");
+        -:   66:    }
+        -:   67:
+        1:   68:    graph_mutex.lock();
+        1:   69:    graph_per_user[user_fd].first.addEdge(u - 1, v - 1, w);
+        1:   70:    graph_per_user[user_fd].first.addEdge(v - 1, u - 1, w);
+        1:   71:    graph_mutex.unlock();
+        -:   72:
+        2:   73:    return "edge added\n";
+        -:   74:}
+        -:   75:
+        2:   76:string PipelineHandler::remove_edge(string input, int user_fd) {
+        3:   77:    istringstream iss(input);
+        -:   78:    int u, v;
+        2:   79:    if (!(iss >> u >> v)) {
+        1:   80:        throw invalid_argument("Invalid input - expected u and v");
+        -:   81:    }
+        -:   82:
+        1:   83:    graph_mutex.lock();
+        1:   84:    graph_per_user[user_fd].first.removeEdge(u - 1, v - 1);
+        1:   85:    graph_per_user[user_fd].first.removeEdge(v - 1, u - 1);
+        1:   86:    graph_mutex.unlock();
+        -:   87:
+        2:   88:    return "edge removed\n";
+        -:   89:}
+        -:   90:
+        2:   91:string PipelineHandler::mst_init(string input, int user_fd) {
+        2:   92:    MSTSolver *solver = mst_factory.createMSTSolver(input);
+        2:   93:    graph_mutex.lock();
+        4:   94:    TreeOnGraph mst = solver->getMST(graph_per_user[user_fd].first);
+        2:   95:    graph_per_user[user_fd].second = mst;
+        2:   96:    graph_mutex.unlock();
+        2:   97:    delete solver;
+        4:   98:    return mst.toString();
+        -:   99:}
+        -:  100:
+        2:  101:string PipelineHandler::mst_weight(string input, int user_fd) {
+        2:  102:    graph_mutex.lock();
+        -:  103:    // copy the mst
+        2:  104:    TreeOnGraph mst = graph_per_user[user_fd].second;
+        2:  105:    graph_mutex.unlock();
+        -:  106:
+        6:  107:    return input + "Weight: " + to_string(mst.getWeight()) + "\n";
+        -:  108:}
+        -:  109:
+        2:  110:string PipelineHandler::mst_longest(string input, int user_fd) {
+        2:  111:    graph_mutex.lock();
+        -:  112:    // copy the mst
+        2:  113:    TreeOnGraph mst = graph_per_user[user_fd].second;
+        2:  114:    graph_mutex.unlock();
+        6:  115:    return input + "Longest distance: " + to_string(mst.longestDist()) + "\n";
+        -:  116:}
+        -:  117:
+        2:  118:string PipelineHandler::mst_shortest(string input, int user_fd) {
+        2:  119:    graph_mutex.lock();
+        -:  120:    // copy the mst
+        2:  121:    TreeOnGraph mst = graph_per_user[user_fd].second;
+        2:  122:    graph_mutex.unlock();
+        6:  123:    return input + "Shortest distance: " + to_string(mst.shortestDist()) + "\n";
+        -:  124:}
+        -:  125:
+        2:  126:string PipelineHandler::mst_avg(string input, int user_fd) {
+        2:  127:    graph_mutex.lock();
+        -:  128:    // copy the mst
+        2:  129:    TreeOnGraph mst = graph_per_user[user_fd].second;
+        2:  130:    graph_mutex.unlock();
+        6:  131:    return input + "Average distance: " + to_string(mst.avgDist()) + "\n";
+        -:  132:}
+        -:  133:
+        4:  134:PipelineHandler::PipelineHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
+        4:  135:    : CommandHandler(graph_per_user, mst_factory), new_graph_stage(nullptr), add_edge_stage(nullptr), remove_edge_stage(nullptr), mst_init_stage(nullptr), mst_weight_stage(nullptr), mst_longest_stage(nullptr), mst_shortest_stage(nullptr), mst_avg_stage(nullptr), print_graph_stage(nullptr) {
+        -:  136:    // create the stages of the pipeline
+        6:  137:    new_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return init_graph(input, user_fd); }, nullptr);
+        6:  138:    add_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return add_edge(input, user_fd); }, nullptr);
+        6:  139:    remove_edge_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return remove_edge(input, user_fd); }, nullptr);
+        6:  140:    mst_avg_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_avg(input, user_fd); }, nullptr);
+        6:  141:    mst_shortest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_shortest(input, user_fd); }, mst_avg_stage);
+        6:  142:    mst_longest_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_longest(input, user_fd); }, mst_shortest_stage);
+        6:  143:    mst_weight_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_weight(input, user_fd); }, mst_longest_stage);
+        6:  144:    mst_init_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return mst_init(input, user_fd); }, mst_weight_stage);
+        5:  145:    print_graph_stage = make_shared<PipelineStage>([this](string input, int user_fd) { return this->graph_per_user[user_fd].first.toString(); }, nullptr);
+        4:  146:}
+        -:  147:
+       10:  148:void PipelineHandler::handle(string input, int user_fd, function<void(string)> on_end) {
+       20:  149:    istringstream iss(input);
+       20:  150:    string command;
+       10:  151:    iss >> command;
+        -:  152:
+        -:  153:    // update the input to be the rest of the input
+       10:  154:    getline(iss, input);
+        -:  155:
+       10:  156:    if (command == NEW_GRAPH) {
+        2:  157:        new_graph_stage->process(input, user_fd, on_end);
+        8:  158:    } else if (command == ADD_EDGE) {
+        2:  159:        add_edge_stage->process(input, user_fd, on_end);
+        6:  160:    } else if (command == REMOVE_EDGE) {
+        2:  161:        remove_edge_stage->process(input, user_fd, on_end);
+        4:  162:    } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+        2:  163:        mst_init_stage->process(command, user_fd, on_end);
+        2:  164:    } else if (command == PRINT_GRAPH) {
+        1:  165:        print_graph_stage->process(input, user_fd, on_end);
+        -:  166:    } else {
+        1:  167:        on_end("Invalid command\n");
+        -:  168:    }
+       10:  169:}
+        -:  170:
+        3:  171:void PipelineHandler::stop_work() {
+        3:  172:    new_graph_stage->stop_work();
+        3:  173:    add_edge_stage->stop_work();
+        3:  174:    remove_edge_stage->stop_work();
+        3:  175:    mst_init_stage->stop_work();
+        3:  176:    mst_weight_stage->stop_work();
+        3:  177:    mst_longest_stage->stop_work();
+        3:  178:    mst_shortest_stage->stop_work();
+        3:  179:    mst_avg_stage->stop_work();
+        3:  180:    print_graph_stage->stop_work();
+        3:  181:}

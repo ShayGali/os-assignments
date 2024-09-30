@@ -7,172 +7,65 @@
         -:    6:#include <thread>
         -:    7:#include <vector>
         -:    8:
-        -:    9:constexpr int MAX_THREADS = 4;
-        -:   10:class LeaderFollower {
-        -:   11:   private:
-        -:   12:    std::queue<std::function<void()>> taskQueue;  // queue of tasks that the threads will execute
-        -:   13:    std::mutex mutex;                             // mutex the queue
-        -:   14:    std::condition_variable cv;                   // condition variable to notify the threads that there is a new task or
-        -:   15:    std::atomic<bool> stop;                       // flag to stop the threads
-        -:   16:    std::vector<std::thread> threads;             // vector of threads
-        -:   17:
-        -:   18:   public:
-        3:   19:    LeaderFollower() : stop(false) {
-       15:   20:        for (size_t i = 0; i < MAX_THREADS; ++i) {  // create the threads and run the workerThread function
-       12:   21:            threads.emplace_back(&LeaderFollower::workerThread, this);
-        -:   22:        }
-        3:   23:    }
-        -:   24:
-        3:   25:    ~LeaderFollower() {
-        -:   26:        {
-        6:   27:            std::unique_lock<std::mutex> lock(mutex);
-        3:   28:            stop.store(true);
-        3:   29:            cv.notify_all();
-        -:   30:        }
-       15:   31:        for (auto &thread : threads) {
-       12:   32:            thread.join();
-        -:   33:        }
-        3:   34:    }
-        -:   35:
-       16:   36:    void addTask(std::function<void()> task) {
-       32:   37:        std::unique_lock<std::mutex> lock(mutex);  // add the task to the queue and notify one of the threads
-       16:   38:        taskQueue.push(std::move(task));
-       16:   39:        cv.notify_one();
-       16:   40:    }
-        -:   41:
-        2:   42:    void stop_work() {
-        2:   43:        stop.store(true);
-        2:   44:        cv.notify_all();
-        2:   45:    }
-        -:   46:
-        -:   47:   private:
-       28:   48:    void workerThread() {
-       28:   49:        while (!stop.load()) {
-       25:   50:            std::function<void()> task;
-        -:   51:            {
-       25:   52:                std::unique_lock<std::mutex> lock(mutex);
-       75:   53:                cv.wait(lock, [this] { return stop.load() || !taskQueue.empty(); });
-       25:   54:                if (stop.load() && taskQueue.empty()) {
-        9:   55:                    return;
-        -:   56:                }
-       16:   57:                task = std::move(taskQueue.front());  // get the task from the queue
-       16:   58:                taskQueue.pop();                      // remove the task from the queue
-        -:   59:            }
-       16:   60:            task();  // execute the task
-        -:   61:        }
-        -:   62:    }
-        -:   63:};
-        -:   64:
-        -:   65:class LFHandler : public CommandHandler {
-        -:   66:   private:
-        -:   67:    LeaderFollower lf;  // Leader-Follower pattern
-        -:   68:
-        -:   69:    string cmd_handler(string input, int user_fd);
-        -:   70:
-        -:   71:   public:
-        3:   72:    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
-        3:   73:        : CommandHandler(graph_per_user, mst_factory) {
-        3:   74:    }
-        -:   75:
-        -:   76:    /**
-        -:   77:     * Handle the input command
-        -:   78:     * will get a string input and a user file descriptor.
-        -:   79:     * add new task to the Leader-Follower pattern
-        -:   80:     */
-       16:   81:    void handle(string input, int user_fd, function<void(string)> on_end) override {
-       16:   82:        lf.addTask([this, input, user_fd, on_end]() {
-       16:   83:            string ans = cmd_handler(input, user_fd);  // handle the command
-       16:   84:            on_end(ans);                               // call the on_end function with the result
-       16:   85:        });
-       16:   86:    }
-        -:   87:
-        2:   88:    void stop_work() override {
-        2:   89:        lf.stop_work();
-        2:   90:    }
-        -:   91:};
-        -:   92:
-        -:   93:/**
-        -:   94: * Handle the input command
-        -:   95: */
-       16:   96:string LFHandler::cmd_handler(string input, int user_fd) {
-       16:   97:    string ans = "Got input: " + input;
-       32:   98:    string command;
-       32:   99:    istringstream iss(input);
-        -:  100:    int u, v, w;
-        -:  101:
-       16:  102:    iss >> command;
-        -:  103:
-        -:  104:    // std::cout << "client " << user_fd << " sent: " << input << std::endl;
-        -:  105:
-        -:  106:    try {
-       16:  107:        if (command == NEW_GRAPH) {
-        9:  108:            string remaining_input;
-        5:  109:            getline(iss, remaining_input);
-        9:  110:            ans += init_graph(remaining_input, user_fd);
-       11:  111:        } else if (command == ADD_EDGE) {
-        -:  112:            // get u and v from the input
-        3:  113:            if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
-        1:  114:                ans += "Invalid input - expected format: u v w\n";
-        1:  115:                return ans;
-        -:  116:            }
-        -:  117:            {
-        4:  118:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  119:                Graph &g = graph_per_user[user_fd].first;
-        2:  120:                g.addEdge(u - 1, v - 1, w);
-        1:  121:                g.addEdge(v - 1, u - 1, w);
-        -:  122:            }
-        -:  123:
-        8:  124:        } else if (command == REMOVE_EDGE) {
-        3:  125:            if (!(iss >> u >> v)) {
-        1:  126:                ans += "Invalid input - expected u and v\n";
-        1:  127:                return ans;
-        -:  128:            }
-        -:  129:            {
-        4:  130:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  131:                Graph &g = graph_per_user[user_fd].first;
-        2:  132:                g.removeEdge(u - 1, v - 1);
-        1:  133:                g.removeEdge(v - 1, u - 1);
-        -:  134:            }
-        5:  135:        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
-        2:  136:            MSTSolver *solver = mst_factory.createMSTSolver(command);
-        4:  137:            TreeOnGraph mst;
-        -:  138:            {
-        4:  139:                std::lock_guard<std::mutex> lock(graph_mutex);
-        2:  140:                Graph &g = graph_per_user[user_fd].first;
-        2:  141:                mst = solver->getMST(g);
-        2:  142:                graph_per_user[user_fd].second = mst;
-        -:  143:            }
-        -:  144:
-        2:  145:            ans += "MST: \n" + mst.toString();
-        -:  146:
-        -:  147:            // do calculations
-        -:  148:            // add weight
-        2:  149:            ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
-        -:  150:            // add longest distance
-        2:  151:            ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
-        -:  152:            // add shortest distance
-        2:  153:            ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
-        -:  154:            // add average distance
-        2:  155:            ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
-        2:  156:            delete solver;
-        3:  157:        } else if (command == PRINT_GRAPH) {
-        -:  158:            {
-        1:  159:                std::lock_guard<std::mutex> lock(graph_mutex);
-        1:  160:                ans += graph_per_user[user_fd].first.toString();
-        -:  161:            }
-        -:  162:        } else {
-        2:  163:            ans += "Invalid command";
-        -:  164:        }
-        6:  165:    } catch (const std::exception &e) {
-        6:  166:        ans += "Error: " + string(e.what());
-        -:  167:    }
-        -:  168:
-        -:  169:    // ad LF if needed
-       14:  170:    if (ans.back() != '\n') {
-        8:  171:        ans += "\n";
-        -:  172:    }
-        -:  173:
-        -:  174:    // std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
-        -:  175:
-       14:  176:    return ans;
-        -:  177:}
+        -:    9:#include "CommandHandler.hpp"
+        -:   10:
+        -:   11:constexpr int MAX_THREADS = 4;
+        -:   12:class LeaderFollower {
+        -:   13:   private:
+        -:   14:    std::queue<std::function<void()>> taskQueue;  // queue of tasks that the threads will execute
+        -:   15:    std::mutex mutex;                             // mutex the queue
+        -:   16:    std::condition_variable cv;                   // condition variable to notify the threads that there is a new task or
+        -:   17:    std::atomic<bool> stop;                       // flag to stop the threads
+        -:   18:    std::vector<std::thread> threads;             // vector of threads
+        -:   19:
+        -:   20:   public:
+        3:   21:    LeaderFollower() : stop(false) {
+       15:   22:        for (size_t i = 0; i < MAX_THREADS; ++i) {  // create the threads and run the workerThread function
+       12:   23:            threads.emplace_back(&LeaderFollower::workerThread, this);
+        -:   24:        }
+        3:   25:    }
+        -:   26:
+        -:   27:    ~LeaderFollower();
+        -:   28:
+       16:   29:    void addTask(std::function<void()> task) {
+       32:   30:        std::unique_lock<std::mutex> lock(mutex);  // add the task to the queue and notify one of the threads
+       16:   31:        taskQueue.push(std::move(task));
+       16:   32:        cv.notify_one();
+       16:   33:    }
+        -:   34:
+        2:   35:    void stop_work() {
+        2:   36:        stop.store(true);
+        2:   37:        cv.notify_all();
+        2:   38:    }
+        -:   39:
+        -:   40:   private:
+        -:   41:    void workerThread();
+        -:   42:};
+        -:   43:
+        -:   44:class LFHandler : public CommandHandler {
+        -:   45:   private:
+        -:   46:    LeaderFollower lf;  // Leader-Follower pattern
+        -:   47:
+        -:   48:    string cmd_handler(string input, int user_fd);
+        -:   49:
+        -:   50:   public:
+        3:   51:    LFHandler(map<int, pair<Graph, TreeOnGraph>> &graph_per_user, MSTFactory &mst_factory)
+        3:   52:        : CommandHandler(graph_per_user, mst_factory) {
+        3:   53:    }
+        -:   54:
+        -:   55:    /**
+        -:   56:     * Handle the input command
+        -:   57:     * will get a string input and a user file descriptor.
+        -:   58:     * add new task to the Leader-Follower pattern
+        -:   59:     */
+       16:   60:    void handle(string input, int user_fd, function<void(string)> on_end) override {
+       16:   61:        lf.addTask([this, input, user_fd, on_end]() {
+       16:   62:            string ans = cmd_handler(input, user_fd);  // handle the command
+       16:   63:            on_end(ans);                               // call the on_end function with the result
+       16:   64:        });
+       16:   65:    }
+        -:   66:
+        2:   67:    void stop_work() override {
+        2:   68:        lf.stop_work();
+        2:   69:    }
+        -:   70:};

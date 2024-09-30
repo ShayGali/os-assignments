@@ -20,10 +20,10 @@ clean:
 coverage: clean
 	make CODE_COVERAGE_FLAGS="-fprofile-arcs -ftest-coverage"
 	./coverage.sh
-	gcov -r main.cpp Graph.cpp TreeOnGraph.cpp MSTSolver.cpp MSTFactory.cpp LFHandler.hpp PipelineHandler.hpp
+	gcov -r main.cpp Graph.cpp TreeOnGraph.cpp MSTSolver.cpp MSTFactory.cpp LFHandler.cpp PipelineHandler.cpp
 	mv *.gcov coverage_res/
 
-main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o utils/MinHeap.o
+main: main.o Graph.o TreeOnGraph.o MSTFactory.o MSTSolver.o utils/union_find.o utils/MinHeap.o LFHandler.o PipelineHandler.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -pthread -lgcov
 
 main.o: main.cpp Graph.hpp TreeOnGraph.hpp MSTSolver.hpp utils/union_find.hpp MSTFactory.hpp client_commands.hpp CommandHandler.hpp LFHandler.hpp PipelineHandler.hpp
@@ -46,6 +46,12 @@ utils/union_find.o: utils/union_find.cpp utils/union_find.hpp
 
 utils/MinHeap.o: utils/MinHeap.cpp utils/MinHeap.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+LFHandler.o: LFHandler.cpp LFHandler.hpp
+	$(CXX) $(CXXFLAGS) $(CODE_COVERAGE_FLAGS) -c $<
+
+PipelineHandler.o: PipelineHandler.cpp PipelineHandler.hpp
+	$(CXX) $(CXXFLAGS) $(CODE_COVERAGE_FLAGS) -c $<
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CXXFLAGS) -c $<

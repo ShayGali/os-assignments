@@ -1,0 +1,115 @@
+        -:    0:Source:LFHandler.cpp
+        -:    1:#include "LFHandler.hpp"
+        -:    2:
+       28:    3:void LeaderFollower::workerThread() {
+       28:    4:    while (!stop.load()) {
+       27:    5:        std::function<void()> task;
+        -:    6:        {
+       27:    7:            std::unique_lock<std::mutex> lock(mutex);
+       81:    8:            cv.wait(lock, [this] { return stop.load() || !taskQueue.empty(); });
+       27:    9:            if (stop.load() && taskQueue.empty()) {
+       11:   10:                return;
+        -:   11:            }
+       16:   12:            task = std::move(taskQueue.front());  // get the task from the queue
+       16:   13:            taskQueue.pop();                      // remove the task from the queue
+        -:   14:        }
+       16:   15:        task();  // execute the task
+        -:   16:    }
+        -:   17:}
+        -:   18:
+        3:   19:LeaderFollower::~LeaderFollower() {
+        -:   20:    {
+        6:   21:        std::unique_lock<std::mutex> lock(mutex);
+        3:   22:        stop.store(true);
+        3:   23:        cv.notify_all();
+        -:   24:    }
+       15:   25:    for (auto &thread : threads) {
+       12:   26:        thread.join();
+        -:   27:    }
+        3:   28:}
+        -:   29:
+        -:   30:/**
+        -:   31: * Handle the input command
+        -:   32: */
+       16:   33:string LFHandler::cmd_handler(string input, int user_fd) {
+       16:   34:    string ans = "Got input: " + input;
+       32:   35:    string command;
+       32:   36:    istringstream iss(input);
+        -:   37:    int u, v, w;
+        -:   38:
+       16:   39:    iss >> command;
+        -:   40:
+        -:   41:    // std::cout << "client " << user_fd << " sent: " << input << std::endl;
+        -:   42:
+        -:   43:    try {
+       16:   44:        if (command == NEW_GRAPH) {
+        9:   45:            string remaining_input;
+        5:   46:            getline(iss, remaining_input);
+        9:   47:            ans += init_graph(remaining_input, user_fd);
+       11:   48:        } else if (command == ADD_EDGE) {
+        -:   49:            // get u and v from the input
+        3:   50:            if (!(iss >> u >> v >> w)) {  // if the buffer is empty we throw an error
+        1:   51:                ans += "Invalid input - expected format: u v w\n";
+        1:   52:                return ans;
+        -:   53:            }
+        -:   54:            {
+        4:   55:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:   56:                Graph &g = graph_per_user[user_fd].first;
+        2:   57:                g.addEdge(u - 1, v - 1, w);
+        1:   58:                g.addEdge(v - 1, u - 1, w);
+        -:   59:            }
+        -:   60:
+        8:   61:        } else if (command == REMOVE_EDGE) {
+        3:   62:            if (!(iss >> u >> v)) {
+        1:   63:                ans += "Invalid input - expected u and v\n";
+        1:   64:                return ans;
+        -:   65:            }
+        -:   66:            {
+        4:   67:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:   68:                Graph &g = graph_per_user[user_fd].first;
+        2:   69:                g.removeEdge(u - 1, v - 1);
+        1:   70:                g.removeEdge(v - 1, u - 1);
+        -:   71:            }
+        5:   72:        } else if (command == MST_PRIME || command == MST_KRUSKAL) {
+        2:   73:            MSTSolver *solver = mst_factory.createMSTSolver(command);
+        4:   74:            TreeOnGraph mst;
+        -:   75:            {
+        4:   76:                std::lock_guard<std::mutex> lock(graph_mutex);
+        2:   77:                Graph &g = graph_per_user[user_fd].first;
+        2:   78:                mst = solver->getMST(g);
+        2:   79:                graph_per_user[user_fd].second = mst;
+        -:   80:            }
+        -:   81:
+        2:   82:            ans += "MST: \n" + mst.toString();
+        -:   83:
+        -:   84:            // do calculations
+        -:   85:            // add weight
+        2:   86:            ans += "Weight: " + std::to_string(mst.getWeight()) + "\n";
+        -:   87:            // add longest distance
+        2:   88:            ans += "Longest distance: " + std::to_string(mst.longestDist()) + "\n";
+        -:   89:            // add shortest distance
+        2:   90:            ans += "Shortest distance: " + std::to_string(mst.shortestDist()) + "\n";
+        -:   91:            // add average distance
+        2:   92:            ans += "Average distance: " + std::to_string(mst.avgDist()) + "\n";
+        2:   93:            delete solver;
+        3:   94:        } else if (command == PRINT_GRAPH) {
+        -:   95:            {
+        1:   96:                std::lock_guard<std::mutex> lock(graph_mutex);
+        1:   97:                ans += graph_per_user[user_fd].first.toString();
+        -:   98:            }
+        -:   99:        } else {
+        2:  100:            ans += "Invalid command";
+        -:  101:        }
+        6:  102:    } catch (const std::exception &e) {
+        6:  103:        ans += "Error: " + string(e.what());
+        -:  104:    }
+        -:  105:
+        -:  106:    // ad LF if needed
+       14:  107:    if (ans.back() != '\n') {
+        8:  108:        ans += "\n";
+        -:  109:    }
+        -:  110:
+        -:  111:    // std::cout << "server sent: to client " << user_fd << ": " << ans << std::endl;
+        -:  112:
+       14:  113:    return ans;
+        -:  114:}

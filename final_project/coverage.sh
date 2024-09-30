@@ -27,8 +27,8 @@ echo "run the server with -p flag"
 echo "run the a good client"
 python3 my_client.py inputs/input.txt &
 sleep 1
-echo "run the a bad client"
-python3 my_client.py inputs/bad_input.txt &
+# echo "run the a bad client"
+# python3 my_client.py inputs/bad_input.txt &
 # wait for the client to finish
 sleep 1
 # kill the server

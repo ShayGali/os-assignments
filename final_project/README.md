@@ -92,8 +92,6 @@ Our outputs can be found in the [coverage_res](./coverage_res) directory.
 To make the [`coverage.sh`](./coverage.sh) script work, with add a python script name [`my_client.py`](./my_client.py) that read [inputs](./inputs/) from here, line by line and send it to the server, with small breakdown between each command.
 
 > Note: the code coverage is not 100% because there are some parts of the code that are not reachable by the tests, like some error handling code.
-> 
-> For some reason, the `gcov` tool does not show the coverage of the `Pipeline` class, but we are sure that it is covered by the tests.
 
 ### Valgrind
 

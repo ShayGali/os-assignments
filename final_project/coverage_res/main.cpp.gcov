@@ -43,86 +43,86 @@
     #####:   42:    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
         -:   43:}
         -:   44:
-        2:   45:int open_server() {
+        5:   45:int open_server() {
         -:   46:    int listener;  // listening socket descriptor
         -:   47:
-        2:   48:    int yes = 1;  // for setsockopt() SO_REUSEADDR, below
+        5:   48:    int yes = 1;  // for setsockopt() SO_REUSEADDR, below
         -:   49:    int rv;
         -:   50:
         -:   51:    struct addrinfo hints, *ai, *p;
         -:   52:
         -:   53:    // get us a socket and bind it
-        2:   54:    memset(&hints, 0, sizeof(hints));
-        2:   55:    hints.ai_family = AF_UNSPEC;
-        2:   56:    hints.ai_socktype = SOCK_STREAM;
-        2:   57:    hints.ai_flags = AI_PASSIVE;
-        2:   58:    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
+        5:   54:    memset(&hints, 0, sizeof(hints));
+        5:   55:    hints.ai_family = AF_UNSPEC;
+        5:   56:    hints.ai_socktype = SOCK_STREAM;
+        5:   57:    hints.ai_flags = AI_PASSIVE;
+        5:   58:    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
     #####:   59:        cerr << "selectserver: " << gai_strerror(rv) << endl;
     #####:   60:        exit(EXIT_FAILURE);
         -:   61:    }
         -:   62:
-       2*:   63:    for (p = ai; p != NULL; p = p->ai_next) {
-        2:   64:        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-       2*:   65:        if (listener < 0) {
+       5*:   63:    for (p = ai; p != NULL; p = p->ai_next) {
+        5:   64:        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+       5*:   65:        if (listener < 0) {
     #####:   66:            continue;
         -:   67:        }
         -:   68:
         -:   69:        // allow socket descriptor to be reuseable
-        2:   70:        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+        5:   70:        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
         -:   71:
-       2*:   72:        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
+       5*:   72:        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
     #####:   73:            close(listener);
     #####:   74:            continue;
         -:   75:        }
         -:   76:
-        2:   77:        break;
+        5:   77:        break;
         -:   78:    }
         -:   79:
         -:   80:    // if we got here, it means we didn't get bound
-        2:   81:    if (p == NULL) {
+        5:   81:    if (p == NULL) {
     #####:   82:        cerr << "selectserver: failed to bind\n";
     #####:   83:        exit(EXIT_FAILURE);
         -:   84:    }
         -:   85:
-        2:   86:    freeaddrinfo(ai);  // all done with this
+        5:   86:    freeaddrinfo(ai);  // all done with this
         -:   87:
         -:   88:    // listen
-        2:   89:    if (listen(listener, MAX_CLIENT) == -1) {
+        5:   89:    if (listen(listener, MAX_CLIENT) == -1) {
     #####:   90:        perror("listen");
     #####:   91:        exit(EXIT_FAILURE);
         -:   92:    }
         -:   93:
-        2:   94:    cout << "selectserver: waiting for connections on port " << PORT << endl;
+        5:   94:    cout << "selectserver: waiting for connections on port " << PORT << endl;
         -:   95:
-        2:   96:    return listener;
+        5:   96:    return listener;
         -:   97:}
         -:   98:
-        4:   99:void accept_connection(int listener, fd_set &master, int &fdmax) {
+        8:   99:void accept_connection(int listener, fd_set &master, int &fdmax) {
         -:  100:    struct sockaddr_storage remoteaddr;  // client address
-        4:  101:    socklen_t addrlen = sizeof(remoteaddr);
-        4:  102:    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
+        8:  101:    socklen_t addrlen = sizeof(remoteaddr);
+        8:  102:    int newfd = accept(listener, (struct sockaddr *)&remoteaddr, &addrlen);
         -:  103:
-        4:  104:    if (newfd == -1) {
+        8:  104:    if (newfd == -1) {
     #####:  105:        perror("accept");
         -:  106:    } else {
-        4:  107:        FD_SET(newfd, &master);  // add to master set
-        4:  108:        if (newfd > fdmax) {     // keep track of the max
-        2:  109:            fdmax = newfd;
+        8:  107:        FD_SET(newfd, &master);  // add to master set
+        8:  108:        if (newfd > fdmax) {     // keep track of the max
+        5:  109:            fdmax = newfd;
         -:  110:        }
         -:  111:
         -:  112:        // char remoteIP[INET6_ADDRSTRLEN];
         -:  113:        // const char *client_ip = inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr *)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
         -:  114:        // cout << "\033[34m" << "selectserver: new connection from " << client_ip << " on socket " << newfd << "\033[0m" << std::endl;
         -:  115:    }
-        4:  116:}
+        8:  116:}
         -:  117:
-        5:  118:int main(int argc, char *argv[]) {
-        5:  119:    CommandHandler *handler = nullptr;
-        5:  120:    mutex send_mutex;
+        8:  118:int main(int argc, char *argv[]) {
+        8:  119:    CommandHandler *handler = nullptr;
+        8:  120:    mutex send_mutex;
         -:  121:    int opt;
         -:  122:    // check if we get l flag or p flag (l for LFHandler, p for PipelineHandler)
-        8:  123:    while ((opt = getopt(argc, argv, "lp")) != -1) {
-        6:  124:        switch (opt) {
+       14:  123:    while ((opt = getopt(argc, argv, "lp")) != -1) {
+        9:  124:        switch (opt) {
         3:  125:            case 'l':
         3:  126:                if (handler != nullptr) {
         1:  127:                    delete handler;
@@ -131,21 +131,21 @@
         -:  130:                }
         2:  131:                handler = new LFHandler(graph_per_user, mst_factory);
         2:  132:                break;
-        2:  133:            case 'p':
-        2:  134:                if (handler != nullptr) {
+        5:  133:            case 'p':
+        5:  134:                if (handler != nullptr) {
         1:  135:                    delete handler;
         1:  136:                    cerr << "You can't use both flags" << endl;
         1:  137:                    exit(EXIT_FAILURE);
         -:  138:                }
-        1:  139:                handler = new PipelineHandler(graph_per_user, mst_factory);
-        1:  140:                break;
+        4:  139:                handler = new PipelineHandler(graph_per_user, mst_factory);
+        4:  140:                break;
         1:  141:            default: /* '?' */
         1:  142:                fprintf(stderr, "Usage: %s [-l] [-p]\n", argv[0]);
         1:  143:                exit(EXIT_FAILURE);
         -:  144:        }
         -:  145:    }
         -:  146:
-        2:  147:    if (handler == nullptr) {
+        5:  147:    if (handler == nullptr) {
         -:  148:        // display warning message (in yellow)
         1:  149:        cerr << "\033[33m" << "[WARNING] No flag was given, using LFHandler by default" << "\033[0m" << endl;
         1:  150:        handler = new LFHandler(graph_per_user, mst_factory);
@@ -154,82 +154,82 @@
         -:  153:    // variables for the server
         -:  154:    char buf[BUF_SIZE];  // buffer for client data
         -:  155:    int nbytes;
-        2:  156:    string ans;
+        5:  156:    string ans;
         -:  157:
-        2:  158:    int listener = open_server();
+        5:  158:    int listener = open_server();
         -:  159:
         -:  160:    fd_set master;    // master file descriptor list
         -:  161:    fd_set read_fds;  // temp file descriptor list for select()
         -:  162:    int fdmax;        // maximum file descriptor number
         -:  163:
-        2:  164:    FD_ZERO(&master);  // clear the master and temp sets
-        2:  165:    FD_ZERO(&read_fds);
+        5:  164:    FD_ZERO(&master);  // clear the master and temp sets
+        5:  165:    FD_ZERO(&read_fds);
         -:  166:
         -:  167:    // add the listener to the master set
-        2:  168:    FD_SET(listener, &master);
+        5:  168:    FD_SET(listener, &master);
         -:  169:
         -:  170:    // keep track of the biggest file descriptor
-        2:  171:    fdmax = listener;  // so far, it's this one
+        5:  171:    fdmax = listener;  // so far, it's this one
         -:  172:
         -:  173:    // main loop
         -:  174:    for (;;) {
-       24:  175:        read_fds = master;  // copy it
-       24:  176:        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+       42:  175:        read_fds = master;  // copy it
+       42:  176:        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
     #####:  177:            perror("select");
     #####:  178:            exit(EXIT_FAILURE);
         -:  179:        }
         -:  180:
         -:  181:        // run through the existing connections looking for data to read
-      142:  182:        for (int i = 0; i <= fdmax; i++) {
-      120:  183:            if (FD_ISSET(i, &read_fds)) {  // we got one!!
-       24:  184:                if (i == listener) {
+      247:  182:        for (int i = 0; i <= fdmax; i++) {
+      210:  183:            if (FD_ISSET(i, &read_fds)) {  // we got one!!
+       42:  184:                if (i == listener) {
         -:  185:                    // handle new connections
-        4:  186:                    accept_connection(listener, master, fdmax);
+        8:  186:                    accept_connection(listener, master, fdmax);
         -:  187:
         -:  188:                    // create a new graph for the user
-        4:  189:                    graph_per_user[i] = make_pair(Graph(), TreeOnGraph());
+        8:  189:                    graph_per_user[i] = make_pair(Graph(), TreeOnGraph());
         -:  190:                } else {  // handle data from a client
-       20:  191:                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
+       34:  191:                    if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
         -:  192:                        // got error or connection closed by client
-        2:  193:                        if (nbytes == 0 || errno == ECONNRESET) {
+        3:  193:                        if (nbytes == 0 || errno == ECONNRESET) {
         -:  194:                            // cout << "\033[34m" << "selectserver: socket " << i << " hung up" << "\033[0m" << std::endl;
         -:  195:                        } else {
     #####:  196:                            perror("recv");
         -:  197:                        }
-        2:  198:                        close(i);            // closing the socket of the client
-        2:  199:                        FD_CLR(i, &master);  // remove from master set
+        3:  198:                        close(i);            // closing the socket of the client
+        3:  199:                        FD_CLR(i, &master);  // remove from master set
         -:  200:                    } else {                 // we got some data from a client
         -:  201:                        // add '\0' to the end of the buffer
-       18:  202:                        buf[nbytes] = '\0';
+       31:  202:                        buf[nbytes] = '\0';
         -:  203:
-       18:  204:                        if (string(buf).starts_with("kill")) {
+       31:  204:                        if (string(buf).starts_with("kill")) {
         -:  205:                            // cout << "\033[33m" << "Server got kill command from client " << i << "\033[0m" << endl;
-        2:  206:                            handler->stop_work();
+        5:  206:                            handler->stop_work();
         -:  207:                            // close all the sockets
-       12:  208:                            for (int j = 0; j <= fdmax; j++) {
-       10:  209:                                if (FD_ISSET(j, &master)) {
-        4:  210:                                    close(j);
+       30:  208:                            for (int j = 0; j <= fdmax; j++) {
+       25:  209:                                if (FD_ISSET(j, &master)) {
+       10:  210:                                    close(j);
         -:  211:                                }
         -:  212:                            }
         -:  213:                            // free the memory
-        2:  214:                            delete handler;
+        5:  214:                            delete handler;
         -:  215:                            // stop the server
-        2:  216:                            close(listener);
-        2:  217:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
-        2:  218:                            return 0;
+        5:  216:                            close(listener);
+        5:  217:                            cout << "\033[33m" << "Server is shutting down" << "\033[0m" << endl;
+        5:  218:                            return 0;
         -:  219:                        }
-       16:  220:                        string input(buf);
-       16:  221:                        handler->handle(input, i, [i, &send_mutex](string ans) {
-       32:  222:                            lock_guard<mutex> lock(send_mutex);
-       16:  223:                            if (send(i, ans.c_str(), ans.size(), 0) == -1) {
+       26:  220:                        string input(buf);
+       26:  221:                        handler->handle(input, i, [i, &send_mutex](string ans) {
+       52:  222:                            lock_guard<mutex> lock(send_mutex);
+       26:  223:                            if (send(i, ans.c_str(), ans.size(), 0) == -1) {
     #####:  224:                                perror("send");
         -:  225:                            }
-       32:  226:                        });
-       16:  227:                        memset(buf, 0, sizeof(buf));  // clear the buffer
+       52:  226:                        });
+       26:  227:                        memset(buf, 0, sizeof(buf));  // clear the buffer
         -:  228:                    }
         -:  229:                }  // END handle data from client
         -:  230:            }  // END got new incoming data
         -:  231:        }  // END looping through file descriptors
-       22:  232:    }  // END for(;;)--and you thought it would never end!
+       37:  232:    }  // END for(;;)--and you thought it would never end!
         -:  233:    return 0;
         -:  234:}
