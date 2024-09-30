@@ -118,3 +118,8 @@ we checked the code coverage of the code using gcov. most of the code is covered
 [link to the code coverage report](./q6/code%20coverage/mynetcat.c.gcov)
 
 ![code coverage](./q6/code%20coverage/code_coverage.png)
+
+
+### Authors
+* [Shay Gali](https://github.com/ShayGali)
+* [Hagay Cohen](https://github.com/hagaycohen2)
