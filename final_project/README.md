@@ -10,7 +10,7 @@ In this project, we will implemented the `Leader Follower` & `Pipeline` concurre
 
 We create a simple TCP select server that can handle multiple clients concurrently.
 
-For each client, the server will store a graph object, and the client can send commands to the server to manipulate the graph, and make calculations on it.
+For each client, the server will store a graph object, and the client can send commands to the server to manipulate the graph, gnarate a minimum spanning tree, and make calculations on it.
 
 ### Running the server
 To run the server, you can use the following command:
@@ -67,6 +67,19 @@ To stop the server, you can send the `kill` command to the server.
 nc localhost 9034
 kill
 ```
+
+
+### Leader Follower pattern
+The Leader Follower pattern we implemented uses a fixed number of threads to handle tasks. Each thread can act as a leader or a follower. The leader thread picks up tasks from a queue and executes them, while the follower threads wait for new tasks to be added to the queue. Once the leader takeover a task, it notifies one of the followers to become the new leader and pick up the next task. Each client command added to the queue is a task.
+
+### Pipeline pattern
+The Pipeline pattern uses the `ActiveObject` class to manage tasks in separate threads. Each `PipelineStage` object, inheriting from `ActiveObject`, represents a stage in the pipeline. 
+
+The `ActiveObject` class encapsulates a thread and a task queue, running in a loop to pick up and execute tasks asynchronously, enhancing concurrency and performance.
+
+The `PipelineStage` class inherits from `ActiveObject` and holds a reference to the next stage in the pipeline. Each stage processes a specific task, or part of a task, and passes the result to the next stage.
+
+This pattern efficiently handles client commands, with each stage processing its part independently. For example, stages for adding/removing edges are single-stage tasks, while the MST calculation is a multi-stage task spanning multiple stages.
 
 ### Code Coverage
 
